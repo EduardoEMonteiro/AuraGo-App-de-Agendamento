@@ -2603,10 +2603,10 @@
   dependencies:
     "@sinonjs/commons" "^3.0.0"
 
-"@stripe/stripe-react-native@0.45.0":
-  version "0.45.0"
-  resolved "https://registry.yarnpkg.com/@stripe/stripe-react-native/-/stripe-react-native-0.45.0.tgz#e0e45e20f35f7dd7a13b4a7baecd6abc91796d65"
-  integrity sha512-7ebzpzkbTrlSfwHJkxv2ixP+YhrF7rLncIr0Sxk6iOeVarB1rOoURWlLRf+Yy5G5OJYjgZDVSVpITcOddtgAVw==
+"@stripe/stripe-react-native@0.38.2":
+  version "0.38.2"
+  resolved "https://registry.yarnpkg.com/@stripe/stripe-react-native/-/stripe-react-native-0.38.2.tgz#c646b8003cfb3630b55258dec21d7c1baff5ad51"
+  integrity sha512-VsG8EQRFOD1IaF9CTgH64sdjsAev6ijI8Ic2VbjiuqjKQyKh61KzD+dI78/YCxAuAh+pmJ+w78Wm7i9PFWhQEg==
 
 "@tybys/wasm-util@^0.10.0":
   version "0.10.0"
