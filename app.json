@@ -23,8 +23,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "googleServicesFile": "./firebase-config/google-services.json",
-      "package": "com.eduardoemonteiro.aura"
+      "package": "com.bloom.aoo"
     },
     "web": {
       "bundler": "metro",
