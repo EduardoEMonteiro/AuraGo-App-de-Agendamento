@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>108734211856-mvuhd6fm855ptnrt33luss436cdenl54.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.108734211856-mvuhd6fm855ptnrt33luss436cdenl54</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>108734211856-i61dp3psnmkvogrvjstnpb8rh492tkq2.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCCv4AIj4oB_VhcShPdlLxAHkE0ed9K46M</string>
+	<key>GCM_SENDER_ID</key>
+	<string>108734211856</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.bloom.aoo</string>
+	<key>PROJECT_ID</key>
+	<string>bloom-agendamento</string>
+	<key>STORAGE_BUCKET</key>
+	<string>bloom-agendamento.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:108734211856:ios:3a80302de35c0c2359a795</string>
+</dict>
+</plist>
