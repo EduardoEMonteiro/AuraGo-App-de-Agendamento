@@ -1,12 +1,15 @@
-import React from 'react';
+import { memo, useCallback } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import { useSalaoInfo } from '../hooks/useSalaoInfo';
 
 interface PlanoInfoCardProps {
   showUpgradeButton?: boolean;
 }
 
-export function PlanoInfoCard({ showUpgradeButton = true }: PlanoInfoCardProps) {
+export const PlanoInfoCard = memo<PlanoInfoCardProps>(({ 
+  showUpgradeButton = true 
+}) => {
   const { salaoInfo, getCurrentPlanoInfo } = useSalaoInfo();
   
   if (!salaoInfo?.plano) {
@@ -16,19 +19,21 @@ export function PlanoInfoCard({ showUpgradeButton = true }: PlanoInfoCardProps) 
   const planoInfo = getCurrentPlanoInfo();
   const isEssencial = salaoInfo.plano === 'essencial';
 
-  const handleUpgrade = () => {
+  const handleUpgrade = useCallback(() => {
     Alert.alert(
       'Upgrade para Plano Pro',
       'Entre em contato conosco para fazer o upgrade do seu plano e desbloquear todos os recursos avançados!',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Contatar', onPress: () => {
-          // Aqui você pode implementar a lógica para contato
-          Alert.alert('Contato', 'WhatsApp: (11) 99999-9999\nEmail: contato@aura.com');
-        }}
+        { 
+          text: 'Contatar', 
+          onPress: useCallback(() => {
+            Alert.alert('Contato', 'WhatsApp: (11) 99999-9999\nEmail: contato@aura.com');
+          }, [])
+        }
       ]
     );
-  };
+  }, []);
 
   return (
     <View style={[styles.container, isEssencial ? styles.essencial : styles.pro]}>
@@ -54,14 +59,16 @@ export function PlanoInfoCard({ showUpgradeButton = true }: PlanoInfoCardProps) 
       )}
     </View>
   );
-}
+});
+
+PlanoInfoCard.displayName = 'PlanoInfoCard';
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginVertical: 8,
+    padding: wp('4%'), // ~16px em tela padrão
+    borderRadius: wp('3%'), // ~12px em tela padrão
+    marginHorizontal: wp('4%'), // ~16px em tela padrão
+    marginVertical: hp('1%'), // ~8px em tela padrão
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -70,57 +77,57 @@ const styles = StyleSheet.create({
   },
   essencial: {
     backgroundColor: '#f0f8ff',
-    borderLeftWidth: 4,
+    borderLeftWidth: wp('1%'), // ~4px em tela padrão
     borderLeftColor: '#1976d2',
   },
   pro: {
     backgroundColor: '#e8f5e8',
-    borderLeftWidth: 4,
+    borderLeftWidth: wp('1%'), // ~4px em tela padrão
     borderLeftColor: '#388e3c',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: hp('1%'), // ~8px em tela padrão
   },
   planoNome: {
-    fontSize: 18,
+    fontSize: hp('2.25%'), // ~18px em tela padrão
     fontWeight: 'bold',
     color: '#333',
   },
   preco: {
-    fontSize: 16,
+    fontSize: hp('2%'), // ~16px em tela padrão
     fontWeight: 'bold',
     color: '#1976d2',
   },
   descricao: {
-    fontSize: 14,
+    fontSize: hp('1.75%'), // ~14px em tela padrão
     color: '#666',
-    marginBottom: 12,
+    marginBottom: hp('1.5%'), // ~12px em tela padrão
   },
   upgradeButton: {
     backgroundColor: '#1976d2',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingVertical: hp('1.25%'), // ~10px em tela padrão
+    paddingHorizontal: wp('5%'), // ~20px em tela padrão
+    borderRadius: wp('2%'), // ~8px em tela padrão
     alignItems: 'center',
   },
   upgradeButtonText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: hp('1.75%'), // ~14px em tela padrão
     fontWeight: 'bold',
   },
   proBadge: {
     backgroundColor: '#388e3c',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    paddingVertical: hp('0.75%'), // ~6px em tela padrão
+    paddingHorizontal: wp('3%'), // ~12px em tela padrão
+    borderRadius: wp('4%'), // ~16px em tela padrão
     alignSelf: 'flex-start',
   },
   proBadgeText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: hp('1.5%'), // ~12px em tela padrão
     fontWeight: 'bold',
   },
 }); 

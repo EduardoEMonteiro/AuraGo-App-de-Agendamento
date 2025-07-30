@@ -1,11 +1,12 @@
 import { Feather } from '@expo/vector-icons';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../contexts/useAuthStore';
+import { useSubmit } from '../hooks/useSubmit';
 import { auth, db } from '../services/firebase';
 
 export const screenOptions = {
@@ -14,18 +15,12 @@ export const screenOptions = {
 
 export default function ContaScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
+  const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
-  React.useLayoutEffect(() => {
-    navigation.setOptions({ headerShown: false });
-  }, [navigation]);
-  const params = useLocalSearchParams();
-  const globalUser = useAuthStore((state) => state.user);
-  const user = params.user ? (typeof params.user === 'string' ? JSON.parse(params.user) : params.user) : globalUser;
   const [nome, setNome] = useState(user?.nome || '');
-  const [telefone, setTelefone] = useState(user?.telefone || '');
   const [email, setEmail] = useState(user?.email || '');
   const [salvando, setSalvando] = useState(false);
+  const [isSubmitting, handleSalvarWrapped] = useSubmit(handleSalvar);
 
   function handleBack() {
     if (router.canGoBack && router.canGoBack()) {
@@ -36,20 +31,19 @@ export default function ContaScreen() {
   }
 
   async function handleSalvar() {
-    if (!user?.id) return;
-    setSalvando(true);
+    if (!user?.idSalao) {
+      Alert.alert('Erro', 'Usuário não identificado.');
+      return;
+    }
     try {
-      await updateDoc(doc(db, 'usuarios', user.id), {
-        nome,
-        telefone,
-        email,
+      const userRef = doc(db, 'usuarios', user.id);
+      await updateDoc(userRef, {
+        nome: nome,
+        email: email,
       });
-      Alert.alert('Sucesso', 'Dados atualizados!');
-      router.back();
-    } catch (e) {
-      Alert.alert('Erro', 'Não foi possível salvar.');
-    } finally {
-      setSalvando(false);
+      Alert.alert('Sucesso', 'Dados atualizados com sucesso!');
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível atualizar os dados.');
     }
   }
 
@@ -81,14 +75,6 @@ export default function ContaScreen() {
           placeholder="Seu nome"
           autoCapitalize="words"
         />
-        <Text style={styles.label}>Telefone</Text>
-        <TextInput
-          style={styles.input}
-          value={telefone}
-          onChangeText={setTelefone}
-          placeholder="(99) 99999-9999"
-          keyboardType="phone-pad"
-        />
         <Text style={styles.label}>E-mail</Text>
         <TextInput
           style={styles.input}
@@ -98,8 +84,12 @@ export default function ContaScreen() {
           keyboardType="email-address"
           autoCapitalize="none"
         />
-        <TouchableOpacity style={styles.saveButton} onPress={handleSalvar} disabled={salvando}>
-          <Text style={styles.saveButtonText}>{salvando ? 'Salvando...' : 'Salvar Alterações'}</Text>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSalvarWrapped} disabled={isSubmitting}>
+          {isSubmitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.saveButtonText}>Salvar Alterações</Text>
+          )}
         </TouchableOpacity>
         <TouchableOpacity style={styles.resetButton} onPress={handleRedefinirSenha}>
           <Feather name="lock" size={18} color="#1976d2" style={{ marginRight: 8 }} />

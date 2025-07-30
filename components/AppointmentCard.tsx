@@ -1,6 +1,7 @@
-import React from 'react';
+import { memo, useCallback } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Colors, Shadows, Spacing, Typography } from '../constants/DesignSystem';
+import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
+import { Colors, Shadows } from '../constants/DesignSystem';
 
 interface AppointmentCardProps {
   clientName: string;
@@ -11,7 +12,7 @@ interface AppointmentCardProps {
   onPress: () => void;
 }
 
-export const AppointmentCard: React.FC<AppointmentCardProps> = ({
+export const AppointmentCard = memo<AppointmentCardProps>(({
   clientName,
   serviceName,
   time,
@@ -19,8 +20,16 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
   serviceColor,
   onPress,
 }) => {
+  const handlePress = useCallback(() => {
+    onPress();
+  }, [onPress]);
+
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity 
+      style={styles.container} 
+      onPress={handlePress} 
+      activeOpacity={0.7}
+    >
       <View style={[styles.colorIndicator, { backgroundColor: serviceColor }]} />
       <View style={styles.content}>
         <View style={styles.leftContent}>
@@ -34,26 +43,28 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
       </View>
     </TouchableOpacity>
   );
-};
+});
+
+AppointmentCard.displayName = 'AppointmentCard';
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.cardBackground,
-    borderRadius: Spacing.cardRadius,
-    marginVertical: Spacing.base / 2,
-    marginHorizontal: Spacing.screenPadding,
+    borderRadius: wp('3%'), // ~12px em tela padrão
+    marginVertical: hp('0.5%'), // ~4px em tela padrão
+    marginHorizontal: wp('4%'), // ~16px em tela padrão
     ...Shadows.card,
     flexDirection: 'row',
     overflow: 'hidden',
   },
   colorIndicator: {
-    width: 4,
+    width: wp('1%'), // ~4px em tela padrão
     height: '100%',
   },
   content: {
     flex: 1,
     flexDirection: 'row',
-    padding: Spacing.base * 2,
+    padding: wp('4%'), // ~16px em tela padrão
   },
   leftContent: {
     flex: 1,
@@ -63,21 +74,25 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   clientName: {
-    ...Typography.BodySemibold,
+    fontSize: hp('2%'), // ~16px em tela padrão
+    fontWeight: '600',
     color: Colors.textPrimary,
-    marginBottom: Spacing.base / 2,
+    marginBottom: hp('0.5%'), // ~4px em tela padrão
   },
   serviceName: {
-    ...Typography.Caption,
+    fontSize: hp('1.75%'), // ~14px em tela padrão
+    fontWeight: '400',
     color: Colors.textSecondary,
-    marginBottom: Spacing.base / 2,
+    marginBottom: hp('0.5%'), // ~4px em tela padrão
   },
   time: {
-    ...Typography.Caption,
+    fontSize: hp('1.75%'), // ~14px em tela padrão
+    fontWeight: '400',
     color: Colors.textSecondary,
   },
   value: {
-    ...Typography.BodySemibold,
+    fontSize: hp('2%'), // ~16px em tela padrão
+    fontWeight: '600',
     color: Colors.textPrimary,
   },
 }); 

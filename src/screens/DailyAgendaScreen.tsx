@@ -1,10 +1,12 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Picker } from '@react-native-picker/picker';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Linking, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckoutModal } from '../../components/CheckoutModal';
 import { useAuthStore } from '../../contexts/useAuthStore';
 import { useSalaoInfo } from '../../hooks/useSalaoInfo';
@@ -626,16 +628,34 @@ const DailyAgendaScreen: React.FC = () => {
       Crédito: 'credit-card',
     };
     for (let i = 2; i <= 12; i++) paymentIcons[`Crédito ${i}x`] = 'credit-card';
+    
     const formasPagamentoRef = collection(db, 'saloes', user.idSalao, 'formasPagamento');
     const q = query(formasPagamentoRef, where('ativo', '==', true));
-    getDocs(q).then(snapshot => {
-      setFormasPagamento(snapshot.docs.map(doc => ({
-        id: doc.id,
-        label: doc.data().nome,
-        icon: paymentIcons[doc.data().nome] || 'credit-card',
-        taxa: doc.data().taxa ?? 0, // Corrigido: inclui o campo taxa
+    
+    // Usar onSnapshot para atualização em tempo real
+    const unsubscribe = onSnapshot(q, snapshot => {
+      const formas = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          label: data.nome,
+          icon: paymentIcons[data.nome] || 'credit-card',
+          taxa: Number(data.taxa) || 0, // Garantir que é número
+          ativa: data.ativo === true, // Garantir que o campo ativa está correto
+        };
+      });
+      
+      console.log('Formas de pagamento carregadas do Firestore:', formas.map(f => ({
+        id: f.id,
+        nome: f.label,
+        ativo: true, // Todas são ativas pois já filtramos
+        taxa: f.taxa
       })));
+      
+      setFormasPagamento(formas);
     });
+    
+    return () => unsubscribe();
   }, [user?.idSalao]);
 
   // Componente Venda Rápida
@@ -670,10 +690,22 @@ const DailyAgendaScreen: React.FC = () => {
       const formaDePagamentoSelecionada = formaPgto;
       let valorDaTaxa = 0;
       const taxaRaw = Number(formaDePagamentoSelecionada.taxa);
+      
+      console.log('=== DEBUG VENDA RÁPIDA ===');
+      console.log('Venda Rápida - Forma de pagamento:', formaDePagamentoSelecionada.label);
+      console.log('Venda Rápida - Taxa configurada:', taxaRaw);
+      console.log('Venda Rápida - Valor total da venda:', valorTotalDaVenda);
+      console.log('Venda Rápida - Objeto forma de pagamento completo:', formaDePagamentoSelecionada);
+      
       if (!isNaN(taxaRaw) && taxaRaw > 0) {
         const taxaPercentual = taxaRaw / 100;
         valorDaTaxa = valorTotalDaVenda * taxaPercentual;
+        console.log('Venda Rápida - Taxa calculada:', valorDaTaxa);
+        console.log('Venda Rápida - Taxa percentual:', taxaPercentual);
+      } else {
+        console.log('Venda Rápida - Taxa não aplicada (taxaRaw <= 0 ou NaN)');
       }
+      
       // Lançar receita BRUTA
       await lancarVendaProdutoFinanceiro({
         nome: produtoSelecionado.nome,
@@ -683,8 +715,10 @@ const DailyAgendaScreen: React.FC = () => {
         data: new Date(),
         userId,
       });
+      
       // Lançar despesa de taxa, se houver
       if (valorDaTaxa > 0.0001 && idSalao) {
+        console.log('Venda Rápida - Criando despesa de taxa:', valorDaTaxa);
         const despesasRef = collection(db, 'saloes', idSalao, 'despesas');
         await addDoc(despesasRef, {
           nome: `Taxa - ${formaDePagamentoSelecionada.label}`,
@@ -692,7 +726,11 @@ const DailyAgendaScreen: React.FC = () => {
           categoria: 'Taxas de Operadora',
           data: new Date(),
         });
+        console.log('Venda Rápida - Despesa de taxa criada com sucesso');
+      } else {
+        console.log('Venda Rápida - Despesa de taxa não criada (valorDaTaxa <= 0.0001 ou idSalao não encontrado)');
       }
+      console.log('=== FIM DEBUG VENDA RÁPIDA ===');
       setLoading(false);
       onClose();
     };
@@ -750,10 +788,30 @@ const DailyAgendaScreen: React.FC = () => {
   const diaConfigAtual = horarioFuncionamento[diaSemanaAtual];
   const isDiaInativo = !loadingHorario && horarioFuncionamento.length > 0 && !diaConfigAtual?.ativo;
 
+  // Exemplo de função corrigida para envio de mensagem WhatsApp
+  function enviarMensagemWhatsapp(cliente: any, mensagem: string) {
+    if (!cliente) {
+      Alert.alert('Erro', 'Cliente não encontrado ou não selecionado.');
+      return;
+    }
+    let numero = cliente.telefone || cliente.celular || '';
+    numero = numero.replace(/\D/g, '');
+    if (numero.length === 10 || numero.length === 11) {
+      numero = '55' + numero;
+    } else if ((numero.length === 12 || numero.length === 13) && numero.startsWith('55')) {
+      // já está correto
+    } else {
+      Alert.alert('Telefone do cliente inválido para WhatsApp: ' + (cliente.telefone || ''));
+      return;
+    }
+    const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
+    Linking.openURL(url);
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BottomSheetModalProvider>
-        <View style={styles.container}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
           {/* HEADER ... igual ao anterior ... */}
           <View style={styles.header}>
             <View style={styles.headerTopRow}>
@@ -858,6 +916,14 @@ const DailyAgendaScreen: React.FC = () => {
                 </View>
                             ) : (
                 appointments.map((appointment, idx) => {
+                  // Início do bloco de instrumentação
+                  if (appointment.clienteNome && appointment.clienteNome.includes('Teste')) { 
+                    console.log('--- [DEBUG INÍCIO] Agendamento:', appointment.clienteNome, '@', appointment.data);
+                    console.log('Dados Brutos do Agendamento:', JSON.stringify(appointment, null, 2));
+                    console.log('Constante-Base HOUR_HEIGHT:', HOUR_HEIGHT);
+                  }
+                  // Fim do bloco de instrumentação
+                  
                   // Calcular posição e altura baseado na data do agendamento
                   // Se a data não tem Z, é horário local, se tem Z, converter para local
                   let appointmentDate;
@@ -878,50 +944,92 @@ const DailyAgendaScreen: React.FC = () => {
                   
                   const startY = ((startHour + startMinute / 60) - START_HOUR) * HOUR_HEIGHT + 50;
                   const endY = ((startHour + (startMinute + duration) / 60) - START_HOUR) * HOUR_HEIGHT + 50;
-                  const height = Math.max(20, endY - startY);
+                  
+                  // Calcular altura baseada na duração
+                  const duracaoEmHoras = duration / 60;
+                  const calculatedHeight = duracaoEmHoras * HOUR_HEIGHT;
+                  
+                  // Define que a altura mínima aceitável é a de um bloco de 30 minutos
+                  const minHeight = HOUR_HEIGHT * 0.5; // 30 minutos
+                  
+                  // A altura final será o maior valor entre a calculada e a mínima
+                  const finalHeight = Math.max(calculatedHeight, minHeight);
                   
                   const colInfo = appointmentColumns[idx] || { col: 0, totalCols: 1 };
                   const totalWidth = 320; // ajuste conforme largura real disponível (right - left)
                   const colWidth = totalWidth / colInfo.totalCols;
                   const leftOffset = 76 + colInfo.col * colWidth;
                   
+                  // Início do bloco de instrumentação
+                  if (appointment.clienteNome && appointment.clienteNome.includes('Teste')) {
+                    console.log('Valores Calculados para o Layout:', {
+                      startY,
+                      calculatedHeight,
+                      minHeight,
+                      finalHeight, // Este é o valor mais importante
+                      leftOffset,
+                      colWidth
+                    });
+                    console.log('--- [DEBUG FIM] ---');
+                  }
+                  // Fim do bloco de instrumentação
+                  
                   // Buscar cor do serviço
                   const servico = services.find(s => s.id === appointment.servicoId);
                   const corServico = servico && servico.cor ? servico.cor : Colors.primary;
                   const corSuave = hexToRgba(corServico, 0.5);
                   return (
-                    <View key={appointment.id || idx} style={{ position: 'absolute', left: leftOffset, width: colWidth - 8, right: undefined, top: startY, height }}>
-                      <TouchableOpacity activeOpacity={0.8} style={{ flex: 1 }} onPress={() => handleAppointmentPress(appointment)}>
-                        <View style={{
-                          flexDirection: 'row',
-                          backgroundColor: appointment.status === 'no-show' ? '#EF4444' : corSuave,
-                          borderRadius: 12,
-                          marginVertical: 2,
-                          ...Shadows.card,
-                          alignItems: 'center',
-                          height: '100%',
-                          overflow: 'hidden',
-                          borderLeftWidth: 4,
-                          borderLeftColor: appointment.status === 'no-show' ? '#DC2626' : corSuave,
-                        }}>
-                          <View style={{ padding: 16, flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                              <Feather 
-                                name={appointment.status === 'no-show' ? 'user-x' : 'calendar'} 
-                                size={16} 
-                                color="#fff" 
-                                style={{ marginRight: 6 }} 
-                              />
-                              <Text style={{ ...Typography.BodySemibold, color: '#fff' }}>
-                                {appointment.clienteNome}
-                                {appointment.status === 'no-show' && ' (No-Show)'}
-                              </Text>
-                            </View>
-                            <Text style={{ ...Typography.Caption, color: '#fff', opacity: 0.9 }}>
-                              {appointment.servicoNome} • {appointmentDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                            </Text>
-                          </View>
+                    <View
+                      key={appointment.id || idx}
+                      style={{
+                        position: 'absolute',
+                        top: startY,
+                        left: leftOffset,
+                        width: colWidth - 8,
+                        height: finalHeight, // A altura calculada com Math.max
+                      }}
+                    >
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => handleAppointmentPress(appointment)}
+                        style={[
+                          styles.appointmentCard,
+                          {
+                            backgroundColor: corSuave,
+                            borderLeftColor: corServico,
+                          },
+                          appointment.status === 'paid' && styles.paidCard,
+                          appointment.status === 'no-show' && styles.noShowCard,
+                        ]}
+                      >
+                        <View style={styles.cardContent}>
+                          <Text
+                            numberOfLines={1}
+                            style={[
+                              styles.cardText,
+                              { color: '#fff' },
+                            ]}
+                          >
+                            <Feather name="user" size={hp('1.5%')} color="#fff" />
+                            {' '}{appointment.clienteNome}
+                          </Text>
+                          <Text
+                            numberOfLines={1}
+                            style={[
+                              styles.cardSubtext,
+                              { color: '#fff' },
+                            ]}
+                          >
+                            {appointment.servicoNome}
+                          </Text>
                         </View>
+
+                        {appointment.status === 'paid' && (
+                          <FontAwesome5 name="check-circle" style={styles.statusIcon} color={'#2e7d32'} />
+                        )}
+                        {appointment.status === 'no-show' && (
+                          <FontAwesome5 name="user-slash" style={styles.statusIcon} color={'#d32f2f'} />
+                        )}
                       </TouchableOpacity>
                     </View>
                   );
@@ -1064,7 +1172,7 @@ const DailyAgendaScreen: React.FC = () => {
                               styles.calendarDayText,
                               isCurrentMonth && styles.calendarDayTextCurrentMonth,
                               isToday && styles.calendarDayTextToday,
-                              isSelected && styles.calendarDayTextSelected
+                              isSelected && styles.calendarDaySelectedText
                             ]}>
                               {date.getDate()}
                             </Text>
@@ -1103,7 +1211,11 @@ const DailyAgendaScreen: React.FC = () => {
             }}
             onCheckout={handleCloseDetails}
             onNoShow={handleNoShow}
-            onEdit={typeof handleEditAppointment === 'function' && selectedAppointment?.status !== 'completed' ? handleEditAppointment : undefined}
+            onEdit={() => {
+              if (selectedAppointment?.status !== 'completed') {
+                handleEditAppointment();
+              }
+            }}
             onCancel={handleCancelAppointment}
             onSendConfirmation={async () => {
               if (!selectedAppointment) return;
@@ -1208,6 +1320,17 @@ const DailyAgendaScreen: React.FC = () => {
                   paymentMethod: paymentMethod,
                   produtosVendidos: produtosVendidos || [],
                 });
+                
+                // Lançar receita principal do agendamento
+                const receitasRef = collection(db, 'saloes', user.idSalao, 'receitas');
+                await addDoc(receitasRef, {
+                  nome: `Agendamento: ${checkoutData.clienteNome}`,
+                  valor: finalPrice,
+                  categoria: 'Agendamento',
+                  data: new Date(),
+                  criadoPor: user.id,
+                });
+                
                 // Lançar receita/despesa para cada produto vendido
                 if (Array.isArray(produtosVendidos)) {
                   for (const p of produtosVendidos) {
@@ -1235,14 +1358,13 @@ const DailyAgendaScreen: React.FC = () => {
             formasPgto={formasPagamento}
             userId={user?.id}
           />
-        </View>
+        </SafeAreaView>
       </BottomSheetModalProvider>
     </GestureHandlerRootView>
   );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.background },
     header: { paddingHorizontal: Spacing.screenPadding, paddingTop: Spacing.screenPadding, borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.cardBackground },
     headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.base * 2 },
     headerIcons: { flexDirection: 'row', alignItems: 'center' },
@@ -1300,34 +1422,78 @@ const styles = StyleSheet.create({
       justifyContent: 'center',
       alignItems: 'center',
       borderRadius: 8,
-      marginVertical: 4,
+      marginVertical: 2,
     },
     calendarDayCurrentMonth: {
       backgroundColor: Colors.cardBackground,
     },
     calendarDayToday: {
-      backgroundColor: '#E3F2FD',
-      borderWidth: 1,
-      borderColor: Colors.primary,
+      backgroundColor: Colors.primary,
+      opacity: 0.3,
     },
     calendarDaySelected: {
       backgroundColor: Colors.primary,
-      borderWidth: 1,
-      borderColor: Colors.primary,
+    },
+    calendarDaySelectedText: {
+      color: '#fff',
     },
     calendarDayText: {
-      ...Typography.Body,
-      color: Colors.textSecondary,
+      ...Typography.BodySemibold,
+      color: Colors.textPrimary,
     },
     calendarDayTextCurrentMonth: {
       color: Colors.textPrimary,
     },
     calendarDayTextToday: {
-      color: '#fff',
+      color: Colors.primary,
+      fontWeight: 'bold',
     },
-    calendarDayTextSelected: {
-      color: '#fff',
+    calendarDayOtherMonth: {
+      opacity: 0.3,
     },
-});
+    calendarDayOtherMonthText: {
+      color: Colors.textSecondary,
+    },
+    
+    // Estilos para status de agendamento
+    statusIcon: {
+      position: 'absolute',
+      top: hp('0.75%'),
+      right: wp('1.5%'),
+      fontSize: hp('1.8%'),
+      opacity: 0.8,
+    },
+    paidCard: {
+      opacity: 0.7,
+    },
+    noShowCard: {
+      opacity: 0.6,
+    },
+    // Estilos para melhorar legibilidade de agendamentos curtos
+    appointmentCard: {
+      flex: 1,
+      borderRadius: 8,
+      overflow: 'hidden',
+      borderLeftWidth: 5,
+      paddingLeft: wp('2%'),
+      paddingVertical: hp('0.5%'),
+      justifyContent: 'center', // Centraliza o conteúdo verticalmente
+      position: 'relative',
+    },
+    cardContent: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    cardText: {
+      ...Typography.BodySemibold,
+      fontSize: hp('1.6%'),
+      lineHeight: hp('2.2%'),
+    },
+    cardSubtext: {
+      ...Typography.Caption,
+      fontSize: hp('1.5%'),
+      opacity: 0.9,
+    },
+  });
 
 export default DailyAgendaScreen; 

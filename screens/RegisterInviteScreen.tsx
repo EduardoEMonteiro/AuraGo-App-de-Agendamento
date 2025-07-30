@@ -2,7 +2,9 @@ import { useRoute } from '@react-navigation/native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { addDoc, collection, doc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Button, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomHeader } from '../components/CustomHeader';
 import { auth, db } from '../services/firebase';
 
 export default function RegisterInviteScreen() {
@@ -82,23 +84,167 @@ export default function RegisterInviteScreen() {
     }
   }
 
-  if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator /></View>;
-  if (error) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: 'red' }}>{error}</Text></View>;
-  if (success) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: 'green' }}>Cadastro realizado com sucesso!</Text></View>;
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <CustomHeader title="Aceitar Convite" showBackButton={false} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007aff" />
+          <Text style={styles.loadingText}>Carregando convite...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <CustomHeader title="Aceitar Convite" showBackButton={false} />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (success) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <CustomHeader title="Aceitar Convite" showBackButton={false} />
+        <View style={styles.successContainer}>
+          <Text style={styles.successText}>Cadastro realizado com sucesso!</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-      <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 24 }}>Aceitar Convite</Text>
-      <Text style={{ marginBottom: 8 }}>E-mail:</Text>
-      <TextInput value={invite.inviteeEmail} editable={false} style={{ backgroundColor: '#eee', borderRadius: 8, padding: 12, marginBottom: 16, width: '100%' }} />
-      <Text style={{ marginBottom: 8 }}>Nome:</Text>
-      <TextInput value={name} onChangeText={setName} placeholder="Seu nome" style={{ backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 16, width: '100%' }} />
-      <Text style={{ marginBottom: 8 }}>Senha:</Text>
-      <TextInput value={password} onChangeText={setPassword} placeholder="Senha" secureTextEntry style={{ backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 16, width: '100%' }} />
-      <Text style={{ marginBottom: 8 }}>Confirme a senha:</Text>
-      <TextInput value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Confirme a senha" secureTextEntry style={{ backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 16, width: '100%' }} />
-      {error ? <Text style={{ color: 'red', marginBottom: 8 }}>{error}</Text> : null}
-      <Button title="Cadastrar" onPress={handleRegister} />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <CustomHeader title="Aceitar Convite" showBackButton={false} />
+      <View style={styles.content}>
+        <Text style={styles.title}>Aceitar Convite</Text>
+        
+        <View style={styles.formContainer}>
+          <Text style={styles.label}>E-mail:</Text>
+          <TextInput 
+            value={invite.inviteeEmail} 
+            editable={false} 
+            style={styles.disabledInput} 
+          />
+          
+          <Text style={styles.label}>Nome:</Text>
+          <TextInput 
+            value={name} 
+            onChangeText={setName} 
+            placeholder="Seu nome" 
+            style={styles.input} 
+          />
+          
+          <Text style={styles.label}>Senha:</Text>
+          <TextInput 
+            value={password} 
+            onChangeText={setPassword} 
+            placeholder="Senha" 
+            secureTextEntry 
+            style={styles.input} 
+          />
+          
+          <Text style={styles.label}>Confirme a senha:</Text>
+          <TextInput 
+            value={confirmPassword} 
+            onChangeText={setConfirmPassword} 
+            placeholder="Confirme a senha" 
+            secureTextEntry 
+            style={styles.input} 
+          />
+          
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          
+          <Button 
+            title="Aceitar Convite" 
+            onPress={handleRegister}
+            disabled={loading}
+          />
+        </View>
+      </View>
+    </SafeAreaView>
   );
-} 
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  content: {
+    flex: 1,
+    padding: 24,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  formContainer: {
+    flex: 1,
+  },
+  label: {
+    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    fontSize: 16,
+  },
+  disabledInput: {
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    fontSize: 16,
+    color: '#6b7280',
+  },
+  errorText: {
+    color: '#ef4444',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6b7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  successContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  successText: {
+    color: '#10b981',
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+}); 

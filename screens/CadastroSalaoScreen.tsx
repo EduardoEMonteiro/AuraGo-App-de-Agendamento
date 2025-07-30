@@ -1,20 +1,20 @@
 import { useLocalSearchParams } from 'expo-router';
-import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Formik } from 'formik';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { TextInputMask } from 'react-native-masked-text';
 import * as Yup from 'yup';
@@ -44,7 +44,13 @@ const horariosPadrao = {
   domingo: 'Fechado',
 };
 
-const formasPagamentoPadrao = ['Dinheiro', 'Cartão Débito'];
+const formasPagamentoPadrao = [
+  { nome: 'Dinheiro', ativo: true, taxa: 0 },
+  { nome: 'Pix', ativo: true, taxa: 0 },
+  { nome: 'Débito', ativo: true, taxa: 0 },
+  { nome: 'Crédito', ativo: true, taxa: 0 },
+  ...Array.from({ length: 11 }, (_, i) => ({ nome: `Crédito ${i + 2}x`, ativo: true, taxa: 0 })),
+];
 
 // --- COMPONENTE DE CAMPO DE FORMULÁRIO REUTILIZÁVEL ---
 // Ajuda a limpar o JSX principal e a reutilizar estilos
@@ -71,7 +77,6 @@ export default function CadastroSalaoScreen() {
         plano: null,
         mensagemWhatsapp: 'Olá! Gostaria de agendar um horário.',
         horarioFuncionamento: horariosPadrao,
-        formasPagamento: formasPagamentoPadrao,
         endereco: {
           cep: values.cep,
           logradouro: values.logradouro,
@@ -82,6 +87,25 @@ export default function CadastroSalaoScreen() {
           complemento: values.complemento || '',
         },
       });
+      
+      // Criar formas de pagamento padrão
+      const batch = writeBatch(db);
+      const formasPagamentoRef = collection(db, 'saloes', salaoRef.id, 'formasPagamento');
+      formasPagamentoPadrao.forEach(f => {
+        const docRef = doc(formasPagamentoRef, f.nome);
+        batch.set(docRef, f);
+      });
+      
+      // Criar mensagens padrão do WhatsApp
+      const mensagensPadrao = {
+        confirmacao: 'Olá [NOME]! 😊 Seu agendamento para [SERVIÇO] com [PROFISSIONAL] está confirmado para o dia [DATA] às [HORA]. Qualquer dúvida, estamos à disposição. 💇‍♀️✨ Endereço: [ENDEREÇO]',
+        lembrete: 'Oi [NOME], tudo bem? Só passando pra lembrar do seu agendamento amanhã! 📍 [SERVIÇO] com [PROFISSIONAL] 📅 Data: [DATA] ⏰ Horário: [HORA] Qualquer mudança é só nos avisar com antecedência 💖 Endereço: [ENDEREÇO]'
+      };
+      const mensagensRef = doc(db, 'saloes', salaoRef.id, 'configuracoes', 'mensagensWhatsapp');
+      batch.set(mensagensRef, mensagensPadrao);
+      
+      await batch.commit();
+      
       const userId = user?.id || user?.uid;
       if (userId) {
         await updateDoc(doc(db, 'usuarios', userId), { idSalao: salaoRef.id });

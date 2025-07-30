@@ -1,5 +1,7 @@
 import React from 'react';
-import { Button, Platform, Text, View } from 'react-native';
+import { Button, Platform, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomHeader } from '../../components/CustomHeader';
 import { initializeStripe } from '../../services/stripe';
 import { StripeCheckoutWeb } from '../components/StripeCheckoutWeb';
 import { StripeProviderUniversal } from '../components/StripeProviderUniversal';
@@ -27,25 +29,47 @@ export default function PlanoScreen({ user }) {
   }
 
   return (
-    <StripeProviderUniversal>
-      <View style={{ padding: 24 }}>
-        <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 16 }}>Escolha seu plano</Text>
-        {planos.map(plano => (
-          <Button
-            key={plano.id}
-            title={`${plano.nome} - R$ ${plano.preco}`}
-            onPress={() => setPlanoEscolhido(plano)}
-            color={planoEscolhido.id === plano.id ? '#635bff' : '#ccc'}
-          />
-        ))}
-        <View style={{ marginTop: 32 }}>
-          {Platform.OS === 'web' ? (
-            <StripeCheckoutWeb plano={planoEscolhido.priceId} idSalao={user?.idSalao} />
-          ) : (
-            <Button title="Assinar" onPress={handleAssinar} color="#635bff" />
-          )}
+    <SafeAreaView style={styles.container}>
+      <CustomHeader title="Escolha seu Plano" showBackButton={false} />
+      <StripeProviderUniversal>
+        <View style={styles.content}>
+          <Text style={styles.title}>Escolha seu plano</Text>
+          {planos.map(plano => (
+            <Button
+              key={plano.id}
+              title={`${plano.nome} - R$ ${plano.preco}`}
+              onPress={() => setPlanoEscolhido(plano)}
+              color={planoEscolhido.id === plano.id ? '#635bff' : '#ccc'}
+            />
+          ))}
+          <View style={styles.buttonContainer}>
+            {Platform.OS === 'web' ? (
+              <StripeCheckoutWeb plano={planoEscolhido.priceId} idSalao={user?.idSalao} />
+            ) : (
+              <Button title="Assinar" onPress={handleAssinar} color="#635bff" />
+            )}
+          </View>
         </View>
-      </View>
-    </StripeProviderUniversal>
+      </StripeProviderUniversal>
+    </SafeAreaView>
   );
-} 
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  content: {
+    flex: 1,
+    padding: 24,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  buttonContainer: {
+    marginTop: 32,
+  },
+}); 

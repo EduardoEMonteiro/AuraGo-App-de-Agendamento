@@ -1,5 +1,5 @@
 import { doc, getDoc } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuthStore } from '../contexts/useAuthStore';
 import { db } from '../services/firebase';
 import {
@@ -24,6 +24,17 @@ interface SalaoInfo {
   mensagemWhatsapp: string;
   horarioFuncionamento: any;
   formasPagamento: string[];
+  stripeCustomerId?: string;
+  statusAssinatura?: string;
+  endereco?: {
+    cep: string;
+    logradouro: string;
+    numero: string;
+    bairro: string;
+    cidade: string;
+    estado: string;
+    complemento?: string;
+  };
 }
 
 export function useSalaoInfo() {
@@ -32,37 +43,42 @@ export function useSalaoInfo() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadSalaoInfo() {
-      if (!user?.idSalao) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const salaoDoc = await getDoc(doc(db, 'saloes', user.idSalao));
-        if (salaoDoc.exists()) {
-          const data = { id: salaoDoc.id, ...salaoDoc.data() } as SalaoInfo;
-          setSalaoInfo(data);
-          
-          // Se o salão não tem plano, pode estar aguardando webhook
-          // Recarregar a cada 3 segundos para verificar se foi atualizado
-          if (!data.plano) {
-            setTimeout(loadSalaoInfo, 3000);
-          }
-        } else {
-          setError('Salão não encontrado');
-        }
-      } catch (err) {
-        setError('Erro ao carregar informações do salão');
-        console.error('Erro ao carregar salão:', err);
-      } finally {
-        setLoading(false);
-      }
+  const loadSalaoInfo = useCallback(async () => {
+    console.log('SalaoInfo - loadSalaoInfo chamado, user.idSalao:', user?.idSalao);
+    if (!user?.idSalao) {
+      console.log('SalaoInfo - Usuário sem idSalao, finalizando');
+      setLoading(false);
+      return;
     }
 
-    loadSalaoInfo();
+    try {
+      const salaoDoc = await getDoc(doc(db, 'saloes', user.idSalao));
+      if (salaoDoc.exists()) {
+        const data = { id: salaoDoc.id, ...salaoDoc.data() } as SalaoInfo;
+        setSalaoInfo(data);
+        
+        // Se o salão não tem plano, pode estar aguardando webhook
+        // Recarregar a cada 3 segundos para verificar se foi atualizado
+        if (!data.plano) {
+          console.log('SalaoInfo - Salão sem plano, agendando recarregamento');
+          setTimeout(loadSalaoInfo, 3000);
+        } else {
+          console.log('SalaoInfo - Salão com plano:', data.plano);
+        }
+      } else {
+        setError('Salão não encontrado');
+      }
+    } catch (err) {
+      setError('Erro ao carregar informações do salão');
+      console.error('Erro ao carregar salão:', err);
+    } finally {
+      setLoading(false);
+    }
   }, [user?.idSalao]);
+
+  useEffect(() => {
+    loadSalaoInfo();
+  }, [loadSalaoInfo]);
 
   // Funções de verificação de limitações
   const canAddMoreProfissionais = (quantidadeAtual: number) => {
@@ -121,6 +137,7 @@ export function useSalaoInfo() {
     salaoInfo,
     loading,
     error,
+    loadSalaoInfo,
     // Funções de verificação
     canAddMoreProfissionais,
     canAddMoreClientes,

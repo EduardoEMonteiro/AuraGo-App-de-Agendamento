@@ -1,123 +1,217 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { Formik } from 'formik';
-import React, { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Yup from 'yup';
+import { CustomHeader } from '../components/CustomHeader';
 import { useAuthStore } from '../contexts/useAuthStore';
+import { useSubmit } from '../hooks/useSubmit';
 import { db } from '../services/firebase';
 
 const configOptions = [
     { key: 'payments', icon: 'credit-card', title: 'Formas de Pagamento', description: 'Gerencie as formas de pagamento' },
+    { key: 'subscription', icon: 'settings', title: 'Gerenciar Assinatura', description: 'Verificar status, alterar plano, cancelar' },
     { key: 'logout', icon: 'log-out', title: 'Sair', description: 'Encerrar sessão' },
 ];
 
-export default function ConfiguracoesScreen() {
+export const ConfiguracoesScreen = memo(() => {
     const [modal, setModal] = useState<string | null>(null);
     const { user, setUser, logout } = useAuthStore();
     console.log('CONFIGURACOES user:', user);
     const router = useRouter();
 
-    function handleOptionPress(key: string) {
+    // Função para migrar mensagens de todos os salões existentes
+    const migrarMensagensGlobais = useCallback(async () => {
+        if (!user?.idSalao) return;
+        
+        try {
+            console.log('Iniciando migração global de mensagens...');
+            
+            // Buscar todos os documentos na coleção 'configuracoes' que começam com 'mensagensWhatsapp_'
+            const configuracoesRef = collection(db, 'configuracoes');
+            const q = query(configuracoesRef, where('__name__', '>=', 'mensagensWhatsapp_'), where('__name__', '<=', 'mensagensWhatsapp_\uf8ff'));
+            const snapshot = await getDocs(q);
+            
+            let migrados = 0;
+            for (const docSnapshot of snapshot.docs) {
+                const salaoId = docSnapshot.id.replace('mensagensWhatsapp_', '');
+                const data = docSnapshot.data();
+                
+                if (data.confirmacao || data.lembrete) {
+                    // Salvar na estrutura correta
+                    const refCorreto = doc(db, 'saloes', salaoId, 'configuracoes', 'mensagensWhatsapp');
+                    await setDoc(refCorreto, {
+                        confirmacao: data.confirmacao || EXEMPLO_CONFIRMACAO,
+                        lembrete: data.lembrete || EXEMPLO_LEMBRETE,
+                    }, { merge: true });
+                    
+                    // Deletar do local antigo
+                    await deleteDoc(docSnapshot.ref);
+                    migrados++;
+                    console.log(`Migrado salão: ${salaoId}`);
+                }
+            }
+            
+            console.log(`Migração concluída! ${migrados} salões migrados.`);
+            Alert.alert('Migração Concluída', `${migrados} salões foram migrados com sucesso!`);
+            
+        } catch (error) {
+            console.error('Erro na migração global:', error);
+            Alert.alert('Erro', 'Erro durante a migração global.');
+        }
+    }, [user?.idSalao]);
+
+    const handleOptionPress = useCallback((key: string) => {
         if (key === 'logout') {
-            logout();
+            Alert.alert(
+                'Sair',
+                'Tem certeza que deseja sair?',
+                [
+                    {
+                        text: 'Cancelar',
+                        style: 'cancel',
+                    },
+                    {
+                        text: 'Sair',
+                        style: 'destructive',
+                        onPress: async () => {
+                            await logout();
+                            router.replace('/login');
+                        },
+                    },
+                ]
+            );
             return;
         }
         if (key === 'payments') {
             router.push('/pagamentos');
             return;
         }
+        if (key === 'subscription') {
+            router.push('/gerenciar-assinatura');
+            return;
+        }
+        if (key === 'migrate') {
+            migrarMensagensGlobais();
+            return;
+        }
         setModal(key);
-    }
+    }, [logout, router, migrarMensagensGlobais]);
+
+    const handlePerfilPress = useCallback(() => {
+        router.push({ pathname: '/ContaScreen', params: { user: JSON.stringify(user) } });
+    }, [router, user]);
+
+    const handleHorarioPress = useCallback(() => {
+        router.push({ pathname: '/HorarioFuncionamentoScreen', params: { user } });
+    }, [router, user]);
+
+    const handleMensagensPress = useCallback(() => {
+        router.push({ pathname: '/mensagens', params: { user: JSON.stringify(user) } });
+    }, [router, user]);
+
+    const handleSalaoPress = useCallback(() => {
+        router.push('/salao');
+    }, [router]);
+
+    const renderCard = useCallback(({ key, icon, title, description, onPress, backgroundColor = '#f9f9f9', iconColor = '#1976d2', chevronColor = '#888', iconType = 'feather' }: any) => (
+        <TouchableOpacity
+            key={key}
+            style={[styles.card, { backgroundColor }]}
+            onPress={onPress}
+            accessibilityLabel={title}
+            accessibilityHint={description}
+        >
+            <View style={[styles.iconWrapper, { backgroundColor: backgroundColor === '#fff3cd' ? '#fff3cd' : '#e3eaff' }]}>
+                {iconType === 'fontawesome5' ? (
+                    <FontAwesome5 name={icon} size={hp('3%')} color={iconColor} />
+                ) : (
+                    <Feather name={icon} size={hp('3%')} color={iconColor} />
+                )}
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>{title}</Text>
+                <Text style={styles.cardDesc}>{description}</Text>
+            </View>
+            <Feather name="chevron-right" size={hp('2.75%')} color={chevronColor} />
+        </TouchableOpacity>
+    ), []);
 
     return (
-        <>
-            <ScrollView style={styles.container}>
-                <Text style={styles.title}>Configurações</Text>
-                <View style={styles.optionsContainer}>
-                    {/* Perfil (unificado) */}
-                    <TouchableOpacity
-                        key="account"
-                        style={styles.card}
-                        onPress={() => router.push({ pathname: '/ContaScreen', params: { user: JSON.stringify(user) } })}
-                        accessibilityLabel="Perfil"
-                        accessibilityHint="Gerencie seu nome, telefone, e-mail e redefina sua senha."
-                    >
-                        <View style={styles.iconWrapper}>
-                            <Feather name="user" size={24} color="#1976d2" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.cardTitle}>Perfil</Text>
-                            <Text style={styles.cardDesc}>Gerencie seu nome, telefone, e-mail e redefina sua senha.</Text>
-                        </View>
-                        <Feather name="chevron-right" size={22} color="#888" />
-                    </TouchableOpacity>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
+            <CustomHeader title="Configurações" showBackButton={false} />
+            <ScrollView style={styles.optionsContainer} showsVerticalScrollIndicator={false}>
+                {/* Perfil (unificado) */}
+                {renderCard({
+                    key: 'account',
+                    icon: 'user',
+                    title: 'Perfil',
+                    description: 'Gerencie seu nome, e-mail e redefina sua senha.',
+                    onPress: handlePerfilPress,
+                })}
 
-                    {/* Horário de Funcionamento */}
-                    <TouchableOpacity
-                        key="horario"
-                        style={styles.card}
-                        onPress={() => router.push({ pathname: '/HorarioFuncionamentoScreen', params: { user } })}
-                        accessibilityLabel="Horário de Funcionamento"
-                        accessibilityHint="Editar horário de funcionamento do salão"
-                    >
-                        <View style={styles.iconWrapper}>
-                            <Feather name="clock" size={22} color="#1976d2" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.cardTitle}>Horário de Funcionamento</Text>
-                            <Text style={styles.cardDesc}>Editar horário de funcionamento do salão</Text>
-                        </View>
-                        <Feather name="chevron-right" size={20} color="#888" />
-                    </TouchableOpacity>
+                {/* Salão */}
+                {renderCard({
+                    key: 'salao',
+                    icon: 'store',
+                    title: 'Salão',
+                    description: 'Gerencie o nome do salão, telefone e endereço',
+                    onPress: handleSalaoPress,
+                    iconType: 'fontawesome5',
+                })}
 
-                    {/* Mensagens de Confirmação */}
-                    <TouchableOpacity
-                        key="whats"
-                        style={styles.card}
-                        onPress={() => router.push({ pathname: '/mensagens', params: { user: JSON.stringify(user) } })}
-                        accessibilityLabel="Mensagens de Confirmação"
-                        accessibilityHint="Editar mensagem padrão de confirmação do WhatsApp"
-                    >
-                        <View style={styles.iconWrapper}>
-                            <Feather name="message-circle" size={22} color="#1976d2" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.cardTitle}>Mensagens de Confirmação</Text>
-                            <Text style={styles.cardDesc}>Editar mensagem padrão de confirmação do WhatsApp</Text>
-                        </View>
-                        <Feather name="chevron-right" size={20} color="#888" />
-                    </TouchableOpacity>
+                {/* Horário de Funcionamento */}
+                {renderCard({
+                    key: 'horario',
+                    icon: 'clock',
+                    title: 'Horário de Funcionamento',
+                    description: 'Editar horário de funcionamento do salão',
+                    onPress: handleHorarioPress,
+                })}
 
-                    {/* Demais opções */}
-                    {configOptions.map(opt => (
-                        <TouchableOpacity
-                            key={opt.key}
-                            style={styles.card}
-                            onPress={() => handleOptionPress(opt.key)}
-                            accessibilityLabel={opt.title}
-                            accessibilityHint={opt.description}
-                        >
-                            <View style={styles.iconWrapper}>
-                                <Feather name={opt.icon as any} size={24} color="#1976d2" />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.cardTitle}>{opt.title}</Text>
-                                <Text style={styles.cardDesc}>{opt.description}</Text>
-                            </View>
-                            <Feather name="chevron-right" size={22} color="#888" />
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                {/* Mensagens de Confirmação */}
+                {renderCard({
+                    key: 'whats',
+                    icon: 'message-circle',
+                    title: 'Mensagens de Confirmação',
+                    description: 'Editar mensagem padrão de confirmação do WhatsApp',
+                    onPress: handleMensagensPress,
+                })}
+
+                {/* Botão de Migração (apenas para administradores) */}
+                {user?.role === 'admin' && renderCard({
+                    key: 'migrate',
+                    icon: 'database',
+                    title: 'Migrar Mensagens',
+                    description: 'Migrar mensagens de salões existentes para nova estrutura',
+                    onPress: () => handleOptionPress('migrate'),
+                    backgroundColor: '#fff3cd',
+                    iconColor: '#856404',
+                    chevronColor: '#856404',
+                })}
+
+                {/* Demais opções */}
+                {configOptions.map(opt => renderCard({
+                    key: opt.key,
+                    icon: opt.icon,
+                    title: opt.title,
+                    description: opt.description,
+                    onPress: () => handleOptionPress(opt.key),
+                }))}
             </ScrollView>
             {/* Modais fora do ScrollView para overlay correto */}
             {modal === 'notifications' && <MockModal title="Notificações" onClose={() => setModal(null)} />}
             {modal === 'plan' && <MockModal title="Plano" onClose={() => setModal(null)} />}
             {modal === 'export' && <MockModal title="Exportação" onClose={() => setModal(null)} />}
-        </>
+        </SafeAreaView>
     );
-}
+});
+
+ConfiguracoesScreen.displayName = 'ConfiguracoesScreen';
 
 function EditProfileModal({ user, onClose, setUser }: { user: any, onClose: () => void, setUser: (u: any) => void }) {
     const perfilSchema = Yup.object().shape({
@@ -496,30 +590,65 @@ export function MensagensWhatsappModal({ user, onClose }: { user: any, onClose: 
         { tag: '[HORA]', desc: 'Horário do agendamento' },
         { tag: '[ENDEREÇO]', desc: 'Endereço do seu estabelecimento' },
     ];
-    const [mensagens, setMensagens] = useState({ confirmacao: '', lembrete: '' });
+    // Garante que o estado sempre tem as chaves corretas
+    const [mensagens, setMensagens] = useState<{ confirmacao: string; lembrete: string }>(() => ({ confirmacao: '', lembrete: '' }));
     const [loading, setLoading] = useState(true);
     const [salvando, setSalvando] = useState(false);
     const [abaAtiva, setAbaAtiva] = useState<'confirmacao' | 'lembrete'>('confirmacao');
+    const [isSubmitting, handleSalvarWrapped] = useSubmit(handleSalvar);
 
     const confirmacaoRef = useRef<TextInput>(null);
     const lembreteRef = useRef<TextInput>(null);
 
     useEffect(() => {
         async function fetchMsgs() {
-            if (!user?.idSalao) {
+            if (!user || !user.idSalao) {
                 setMensagens({ confirmacao: EXEMPLO_CONFIRMACAO, lembrete: EXEMPLO_LEMBRETE });
                 setLoading(false);
                 return;
             }
-            const ref = doc(db, 'configuracoes', `mensagensWhatsapp_${user.idSalao}`);
-            const snap = await getDoc(ref);
-            if (snap.exists()) {
-                const data = snap.data();
-                setMensagens({
-                    confirmacao: data.confirmacao || EXEMPLO_CONFIRMACAO,
-                    lembrete: data.lembrete || EXEMPLO_LEMBRETE,
-                });
-            } else {
+            try {
+                // Primeiro, tentar buscar da estrutura correta
+                const ref = doc(db, 'saloes', user.idSalao, 'configuracoes', 'mensagensWhatsapp');
+                const snap = await getDoc(ref);
+                
+                if (snap.exists()) {
+                    const data = snap.data() || {};
+                    setMensagens({
+                        confirmacao: typeof data.confirmacao === 'string' ? data.confirmacao : EXEMPLO_CONFIRMACAO,
+                        lembrete: typeof data.lembrete === 'string' ? data.lembrete : EXEMPLO_LEMBRETE,
+                    });
+                } else {
+                    // Se não existir na estrutura correta, tentar migrar do local antigo
+                    console.log('Tentando migrar mensagens do local antigo...');
+                    try {
+                        const refAntigo = doc(db, 'configuracoes', `mensagensWhatsapp_${user.idSalao}`);
+                        const snapAntigo = await getDoc(refAntigo);
+                        
+                        if (snapAntigo.exists()) {
+                            const dataAntigo = snapAntigo.data();
+                            const mensagensMigradas = {
+                                confirmacao: dataAntigo.confirmacao || EXEMPLO_CONFIRMACAO,
+                                lembrete: dataAntigo.lembrete || EXEMPLO_LEMBRETE,
+                            };
+                            
+                            // Salvar na estrutura correta
+                            await setDoc(ref, mensagensMigradas, { merge: true });
+                            
+                            // Deletar do local antigo
+                            await deleteDoc(refAntigo);
+                            
+                            setMensagens(mensagensMigradas);
+                            console.log('Migração concluída com sucesso!');
+                        } else {
+                            setMensagens({ confirmacao: EXEMPLO_CONFIRMACAO, lembrete: EXEMPLO_LEMBRETE });
+                        }
+                    } catch (error) {
+                        console.log('Erro na migração:', error);
+                        setMensagens({ confirmacao: EXEMPLO_CONFIRMACAO, lembrete: EXEMPLO_LEMBRETE });
+                    }
+                }
+            } catch (e) {
                 setMensagens({ confirmacao: EXEMPLO_CONFIRMACAO, lembrete: EXEMPLO_LEMBRETE });
             }
             setLoading(false);
@@ -532,25 +661,27 @@ export function MensagensWhatsappModal({ user, onClose }: { user: any, onClose: 
         if (!textInputRef) return;
         textInputRef.focus();
         setMensagens(prev => {
-            const currentValue = prev[abaAtiva];
+            const currentValue = prev[abaAtiva] || '';
             const newText = currentValue + tag;
             return { ...prev, [abaAtiva]: newText };
         });
     }
 
     async function handleSalvar() {
-        if (!user?.idSalao) return;
+        if (!user || !user.idSalao) {
+            Alert.alert('Erro', 'Salão não identificado.');
+            return;
+        }
         Keyboard.dismiss();
         setSalvando(true);
-        const ref = doc(db, 'configuracoes', `mensagensWhatsapp_${user.idSalao}`);
+        // Corrigido: Salvar na estrutura correta do salão
+        const ref = doc(db, 'saloes', user.idSalao, 'configuracoes', 'mensagensWhatsapp');
         try {
             await setDoc(ref, mensagens, { merge: true });
             Alert.alert('Sucesso!', 'Suas mensagens foram salvas.');
             onClose();
         } catch (error) {
             Alert.alert('Erro', 'Não foi possível salvar as mensagens.');
-        } finally {
-            setSalvando(false);
         }
     }
 
@@ -560,11 +691,11 @@ export function MensagensWhatsappModal({ user, onClose }: { user: any, onClose: 
         }
 
         const activeRef = abaAtiva === 'confirmacao' ? confirmacaoRef : lembreteRef;
-        const activeValue = mensagens[abaAtiva];
+        const activeValue = mensagens[abaAtiva] || '';
         const activePlaceholder = abaAtiva === 'confirmacao' ? EXEMPLO_CONFIRMACAO : EXEMPLO_LEMBRETE;
 
         return (
-            <ScrollView style={styles.scrollContainer} contentContainerStyle={{ paddingBottom: 20 }}>
+                         <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
                 <TextInput
                     ref={activeRef}
                     value={activeValue}
@@ -623,8 +754,8 @@ export function MensagensWhatsappModal({ user, onClose }: { user: any, onClose: 
                     </View>
                     {renderContent()}
                     <View style={styles.footer}>
-                        <TouchableOpacity style={styles.saveButton} onPress={handleSalvar} disabled={salvando}>
-                            {salvando ? (
+                        <TouchableOpacity style={styles.saveButton} onPress={handleSalvarWrapped} disabled={isSubmitting}>
+                            {isSubmitting ? (
                                 <ActivityIndicator color="#fff" />
                             ) : (
                                 <Text style={styles.saveButtonText}>Salvar Alterações</Text>
@@ -638,47 +769,79 @@ export function MensagensWhatsappModal({ user, onClose }: { user: any, onClose: 
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff', padding: 16 },
-    title: { fontSize: 22, fontWeight: 'bold', marginBottom: 8 },
-    optionsContainer: { marginTop: 8 },
+    optionsContainer: { 
+        marginTop: hp('1%') 
+    },
     card: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#f9f9f9',
-        borderRadius: 10,
-        padding: 16,
-        marginBottom: 12,
+        borderRadius: wp('2.5%'),
+        padding: wp('4%'),
+        marginBottom: hp('1.5%'),
         elevation: 1,
     },
     iconWrapper: {
-        width: 40, height: 40, borderRadius: 20,
-        backgroundColor: '#e3eaff', alignItems: 'center', justifyContent: 'center', marginRight: 16,
+        width: wp('10%'), 
+        height: wp('10%'), 
+        borderRadius: wp('5%'),
+        backgroundColor: '#e3eaff', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        marginRight: wp('4%'),
     },
-    cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#222' },
-    cardDesc: { fontSize: 13, color: '#666', marginTop: 2 },
-    scrollContainer: { flex: 1, paddingHorizontal: 16, paddingTop: 10 },
+    cardTitle: { 
+        fontSize: hp('2%'), 
+        fontWeight: 'bold', 
+        color: '#222' 
+    },
+    cardDesc: { 
+        fontSize: hp('1.625%'), 
+        color: '#666', 
+        marginTop: hp('0.25%') 
+    },
     textInput: {
-        height: 180,
+        height: hp('22.5%'),
         borderColor: '#ddd',
         borderWidth: 1,
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 15,
-        marginBottom: 16,
+        borderRadius: wp('2%'),
+        padding: wp('3%'),
+        fontSize: hp('1.875%'),
+        marginBottom: hp('2%'),
     },
-    infoSection: { marginBottom: 16, backgroundColor: '#f0f4ff', padding: 12, borderRadius: 8 },
-    sectionTitle: { fontWeight: 'bold', marginBottom: 8, fontSize: 15, color: '#333' },
-    infoText: { fontSize: 13, color: '#555', lineHeight: 18 },
-    tagsContainer: { flexDirection: 'row', flexWrap: 'wrap' },
+    infoSection: { 
+        marginBottom: hp('2%'), 
+        backgroundColor: '#f0f4ff', 
+        padding: wp('3%'), 
+        borderRadius: wp('2%') 
+    },
+    sectionTitle: { 
+        fontWeight: 'bold', 
+        marginBottom: hp('1%'), 
+        fontSize: hp('1.875%'), 
+        color: '#333' 
+    },
+    infoText: { 
+        fontSize: hp('1.625%'), 
+        color: '#555', 
+        lineHeight: hp('2.25%') 
+    },
+    tagsContainer: { 
+        flexDirection: 'row', 
+        flexWrap: 'wrap' 
+    },
     tagChip: {
         backgroundColor: '#e0e0e0',
-        borderRadius: 16,
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        marginRight: 8,
-        marginBottom: 8,
+        borderRadius: wp('4%'),
+        paddingVertical: hp('0.75%'),
+        paddingHorizontal: wp('3%'),
+        marginRight: wp('2%'),
+        marginBottom: hp('1%'),
     },
-    tagChipText: { fontSize: 13, color: '#333' },
+    tagChipText: { 
+        fontSize: hp('1.625%'), 
+        color: '#333' 
+    },
     overlay: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -691,21 +854,29 @@ const styles = StyleSheet.create({
     modalContainer: {
         backgroundColor: 'white',
         height: '90%',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        borderTopLeftRadius: wp('5%'),
+        borderTopRightRadius: wp('5%'),
         overflow: 'hidden',
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
+        padding: wp('4%'),
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
     },
-    headerTitle: { fontSize: 18, fontWeight: 'bold' },
-    closeButton: { padding: 8 },
-    closeButtonText: { fontSize: 18, fontWeight: 'bold' },
+    headerTitle: { 
+        fontSize: hp('2.25%'), 
+        fontWeight: 'bold' 
+    },
+    closeButton: { 
+        padding: wp('2%') 
+    },
+    closeButtonText: { 
+        fontSize: hp('2.25%'), 
+        fontWeight: 'bold' 
+    },
     tabBar: {
         flexDirection: 'row',
         justifyContent: 'space-around',
@@ -714,49 +885,91 @@ const styles = StyleSheet.create({
     },
     tabButton: {
         flex: 1,
-        paddingVertical: 14,
+        paddingVertical: hp('1.75%'),
         alignItems: 'center',
     },
     tabButtonActive: {
         borderBottomWidth: 3,
         borderBottomColor: '#1976d2',
     },
-    tabText: { color: '#888', fontWeight: '500' },
-    tabTextActive: { color: '#1976d2', fontWeight: 'bold' },
+    tabText: { 
+        color: '#888', 
+        fontWeight: '500' 
+    },
+    tabTextActive: { 
+        color: '#1976d2', 
+        fontWeight: 'bold' 
+    },
     footer: {
-        padding: 16,
+        padding: wp('4%'),
         borderTopWidth: 1,
         borderTopColor: '#eee',
         backgroundColor: '#fff',
     },
     saveButton: {
         backgroundColor: '#1976d2',
-        borderRadius: 8,
-        padding: 16,
+        borderRadius: wp('2%'),
+        padding: wp('4%'),
         alignItems: 'center',
     },
     saveButtonText: {
         color: 'white',
         fontWeight: 'bold',
-        fontSize: 16,
+        fontSize: hp('2%'),
     },
 });
 
 const mockStyles = StyleSheet.create({
-    overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
-    modal: { backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '85%', alignItems: 'center' },
-    title: { fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
-    desc: { fontSize: 15, color: '#555', marginBottom: 24, textAlign: 'center' },
-    button: { backgroundColor: '#1976d2', borderRadius: 8, paddingVertical: 12, paddingHorizontal: 32, width: '100%' },
-    buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16, textAlign: 'center' },
+    overlay: { 
+        position: 'absolute', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0, 
+        backgroundColor: 'rgba(0,0,0,0.2)', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        zIndex: 10 
+    },
+    modal: { 
+        backgroundColor: '#fff', 
+        borderRadius: wp('4%'), 
+        padding: wp('6%'), 
+        width: '85%', 
+        alignItems: 'center' 
+    },
+    title: { 
+        fontSize: hp('2.5%'), 
+        fontWeight: 'bold', 
+        marginBottom: hp('1.5%') 
+    },
+    desc: { 
+        fontSize: hp('1.875%'), 
+        color: '#555', 
+        marginBottom: hp('3%'), 
+        textAlign: 'center' 
+    },
+    button: { 
+        backgroundColor: '#1976d2', 
+        borderRadius: wp('2%'), 
+        paddingVertical: hp('1.5%'), 
+        paddingHorizontal: wp('8%'), 
+        width: '100%' 
+    },
+    buttonText: { 
+        color: '#fff', 
+        fontWeight: 'bold', 
+        fontSize: hp('2%'), 
+        textAlign: 'center' 
+    },
     input: {
         width: '100%',
-        height: 50,
+        height: hp('6.25%'),
         borderColor: '#ccc',
         borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        marginBottom: 15,
-        fontSize: 16,
+        borderRadius: wp('2%'),
+        paddingHorizontal: wp('2.5%'),
+        marginBottom: hp('1.875%'),
+        fontSize: hp('2%'),
     },
 });

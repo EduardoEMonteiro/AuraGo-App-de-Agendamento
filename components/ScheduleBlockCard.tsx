@@ -1,7 +1,8 @@
-import React from 'react';
+import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import Icon from 'react-native-vector-icons/Feather';
-import { Colors, Icons, Spacing, Typography } from '../constants/DesignSystem';
+import { Colors, Icons } from '../constants/DesignSystem';
 
 interface ScheduleBlockCardProps {
   reason: string;
@@ -9,7 +10,7 @@ interface ScheduleBlockCardProps {
   endTime: string;
 }
 
-export const ScheduleBlockCard: React.FC<ScheduleBlockCardProps> = ({
+export const ScheduleBlockCard = memo<ScheduleBlockCardProps>(({
   reason,
   startTime,
   endTime,
@@ -28,14 +29,16 @@ export const ScheduleBlockCard: React.FC<ScheduleBlockCardProps> = ({
       </View>
     </View>
   );
-};
+});
+
+ScheduleBlockCard.displayName = 'ScheduleBlockCard';
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.blockBackground,
-    borderRadius: Spacing.cardRadius,
-    marginVertical: Spacing.base / 2,
-    marginHorizontal: Spacing.screenPadding,
+    borderRadius: wp('3%'), // ~12px em tela padrão
+    marginVertical: hp('0.5%'), // ~4px em tela padrão
+    marginHorizontal: wp('4%'), // ~16px em tela padrão
     borderWidth: 1,
     borderColor: Colors.border,
     overflow: 'hidden',
@@ -55,21 +58,23 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.base * 2,
+    padding: wp('4%'), // ~16px em tela padrão
   },
   iconContainer: {
-    marginRight: Spacing.base,
+    marginRight: wp('2%'), // ~8px em tela padrão
   },
   textContainer: {
     flex: 1,
   },
   reason: {
-    ...Typography.BodySemibold,
+    fontSize: hp('2%'), // ~16px em tela padrão
+    fontWeight: '600',
     color: Colors.textPrimary,
-    marginBottom: Spacing.base / 2,
+    marginBottom: hp('0.5%'), // ~4px em tela padrão
   },
   timeRange: {
-    ...Typography.Caption,
+    fontSize: hp('1.75%'), // ~14px em tela padrão
+    fontWeight: '400',
     color: Colors.textSecondary,
   },
 }); 

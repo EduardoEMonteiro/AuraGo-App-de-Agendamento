@@ -26,27 +26,32 @@ const STRIPE_PRODUCTS = {
 // Criar sessão de checkout
 app.post('/api/create-checkout-session', async (req, res) => {
   try {
-    const { plano, customerEmail, successUrl, cancelUrl } = req.body;
-
-    // Ambos os planos requerem pagamento
+    const { priceId, idSalao } = req.body;
+    
+    console.log('Criando sessão de checkout:', { priceId, idSalao });
 
     // Criar sessão de checkout para o plano selecionado
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price: STRIPE_PRODUCTS[plano].priceId,
+          price: priceId,
           quantity: 1,
         },
       ],
       mode: 'subscription',
-      success_url: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl,
-      customer_email: customerEmail,
+      success_url: 'aura://checkout/sucesso?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'aura://checkout/cancelado',
       metadata: {
-        plano: plano,
-        customerEmail: customerEmail,
+        idSalao: idSalao,
+        priceId: priceId,
       },
+    });
+
+    console.log('Sessão criada:', {
+      sessionId: session.id,
+      successUrl: session.success_url,
+      cancelUrl: session.cancel_url
     });
 
     res.json({
@@ -159,6 +164,64 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
   }
 
   res.json({ received: true });
+});
+
+// Criar sessão do Customer Portal
+app.post('/api/create-portal-session', async (req, res) => {
+  try {
+    const { customerId, returnUrl } = req.body;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Customer ID é obrigatório'
+      });
+    }
+
+    // Criar sessão do Customer Portal
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl || 'aura://account',
+    });
+
+    res.json({
+      success: true,
+      url: session.url
+    });
+
+  } catch (error) {
+    console.error('Erro ao criar sessão do portal:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao criar sessão do portal'
+    });
+  }
+});
+
+// Buscar informações do customer
+app.get('/api/customer/:customerId', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+
+    const customer = await stripe.customers.retrieve(customerId);
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'all'
+    });
+
+    res.json({
+      success: true,
+      customer: customer,
+      subscriptions: subscriptions.data
+    });
+
+  } catch (error) {
+    console.error('Erro ao buscar customer:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar informações do customer'
+    });
+  }
 });
 
 const PORT = process.env.PORT || 3000;

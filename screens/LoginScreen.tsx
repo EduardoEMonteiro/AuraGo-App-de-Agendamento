@@ -1,9 +1,11 @@
 import * as AuthSession from 'expo-auth-session';
+import { useRouter } from 'expo-router';
 import type { Auth } from 'firebase/auth';
 import { createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../contexts/useAuthStore';
 import { auth, db } from '../services/firebase';
 
@@ -17,6 +19,7 @@ const discovery = {
 
 export default function LoginScreen() {
   const { setUser } = useAuthStore();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -56,134 +59,211 @@ export default function LoginScreen() {
   console.log('LoginScreen renderizou, mode:', mode, 'email:', email, 'user:', typeof setUser);
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#efefef' }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
-    >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24, backgroundColor: '#efefef' }}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#efefef' }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: '#efefef' }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
       >
-        <View style={{ alignItems: 'center', width: '100%', marginBottom: 48, marginTop: 8 }}>
-          <Image source={require('../assets/images/logo_aura.png')} style={{ width: 200, height: 200, resizeMode: 'contain' }} />
-        </View>
-        <View style={{ width: '100%', gap: 12, marginBottom: 24 }}>
-          {mode !== 'reset' && (
-            <TextInput
-              value={email}
-              onChangeText={t => { setEmail(t); console.log('email alterado:', t); }}
-              placeholder="E-mail"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholderTextColor="#6B7280"
-              style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 0, padding: 16, fontSize: 16, marginBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, color: '#000' }}
-            />
-          )}
-          {mode === 'login' && (
-            <TextInput
-              value={password}
-              onChangeText={t => { setPassword(t); console.log('senha alterada:', t); }}
-              placeholder="Senha"
-              secureTextEntry
-              placeholderTextColor="#6B7280"
-              style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 0, padding: 16, fontSize: 16, marginBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, color: '#000' }}
-            />
-          )}
-          {mode === 'register' && (
-            <>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24, backgroundColor: '#efefef' }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={{ alignItems: 'center', width: '100%', marginBottom: 48, marginTop: 8 }}>
+            <Image source={require('../assets/images/logo_aura.png')} style={{ width: 200, height: 200, resizeMode: 'contain' }} />
+          </View>
+          <View style={{ width: '100%', gap: 12, marginBottom: 24 }}>
+            {mode !== 'reset' && (
               <TextInput
-                value={firstName}
-                onChangeText={setFirstName}
-                placeholder="Nome"
+                value={email}
+                onChangeText={t => { setEmail(t); console.log('email alterado:', t); }}
+                placeholder="E-mail"
+                autoCapitalize="none"
+                keyboardType="email-address"
                 placeholderTextColor="#6B7280"
                 style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 0, padding: 16, fontSize: 16, marginBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, color: '#000' }}
               />
-              <TextInput
-                value={lastName}
-                onChangeText={setLastName}
-                placeholder="Sobrenome"
-                placeholderTextColor="#6B7280"
-                style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 0, padding: 16, fontSize: 16, marginBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, color: '#000' }}
-              />
+            )}
+            {mode === 'login' && (
               <TextInput
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={t => { setPassword(t); console.log('senha alterada:', t); }}
                 placeholder="Senha"
                 secureTextEntry
                 placeholderTextColor="#6B7280"
                 style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 0, padding: 16, fontSize: 16, marginBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, color: '#000' }}
               />
-              <TextInput
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Confirme a senha"
-                secureTextEntry
-                placeholderTextColor="#6B7280"
-                style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 0, padding: 16, fontSize: 16, marginBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, color: '#000' }}
-              />
-              {registerError ? (
-                <Text style={{ color: 'red', marginBottom: 8 }}>{registerError}</Text>
-              ) : null}
-            </>
-          )}
-          {mode === 'reset' && (
-            <TextInput
-              value={email}
-              onChangeText={t => { setEmail(t); console.log('email alterado:', t); }}
-              placeholder="E-mail"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholderTextColor="#6B7280"
-              style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 0, padding: 16, fontSize: 16, marginBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, color: '#000' }}
-            />
-          )}
-        </View>
-        {loading ? (
-          <ActivityIndicator style={{ marginVertical: 16 }} />
-        ) : (
-          <>
-            {mode === 'login' && (
-              <>
-                <Pressable onPress={() => { console.log('Botão Entrar clicado'); handleLogin(); }} style={{ width: '100%', backgroundColor: '#1976d2', borderRadius: 30, paddingVertical: 16, alignItems: 'center', marginBottom: 16 }}>
-                  <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>Entrar</Text>
-                </Pressable>
-                <TouchableOpacity onPress={() => { setMode('register'); console.log('Mudou para register'); }} style={{ marginBottom: 4 }}>
-                  <Text style={{ color: '#1976d2', textAlign: 'center', fontSize: 15 }}>Criar conta</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => { setMode('reset'); console.log('Mudou para reset'); }} style={{ marginBottom: 24 }}>
-                  <Text style={{ color: '#1976d2', textAlign: 'center', fontSize: 15 }}>Esqueci minha senha</Text>
-                </TouchableOpacity>
-                <Pressable onPress={() => { console.log('Botão Google clicado'); promptAsync(); }} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 30, paddingVertical: 14, paddingHorizontal: 16, width: '100%', justifyContent: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, marginBottom: Platform.OS === 'ios' ? 0 : 8 }}>
-                  <Image source={require('../assets/images/g_logo.png')} style={{ width: 24, height: 24, marginRight: 10 }} />
-                  <Text style={{ color: '#444', fontSize: 16 }}>Entrar com o Google</Text>
-                </Pressable>
-              </>
             )}
             {mode === 'register' && (
               <>
-                <Pressable onPress={() => { console.log('Botão Criar conta clicado'); handleRegister(); }} style={{ width: '100%', backgroundColor: '#1976d2', borderRadius: 30, paddingVertical: 16, alignItems: 'center', marginBottom: 16 }}>
-                  <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>Criar conta</Text>
-                </Pressable>
-                <TouchableOpacity onPress={() => { setMode('login'); console.log('Mudou para login'); }} style={{ marginBottom: 24 }}>
-                  <Text style={{ color: '#1976d2', textAlign: 'center', fontSize: 15 }}>Já tenho conta</Text>
-                </TouchableOpacity>
+                <TextInput
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  placeholder="Nome"
+                  placeholderTextColor="#6B7280"
+                  style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 0, padding: 16, fontSize: 16, marginBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, color: '#000' }}
+                />
+                <TextInput
+                  value={lastName}
+                  onChangeText={setLastName}
+                  placeholder="Sobrenome"
+                  placeholderTextColor="#6B7280"
+                  style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 0, padding: 16, fontSize: 16, marginBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, color: '#000' }}
+                />
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Senha"
+                  secureTextEntry
+                  placeholderTextColor="#6B7280"
+                  style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 0, padding: 16, fontSize: 16, marginBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, color: '#000' }}
+                />
+                <TextInput
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Confirmar senha"
+                  secureTextEntry
+                  placeholderTextColor="#6B7280"
+                  style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 0, padding: 16, fontSize: 16, marginBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, color: '#000' }}
+                />
               </>
             )}
             {mode === 'reset' && (
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="E-mail para recuperação"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholderTextColor="#6B7280"
+                style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 0, padding: 16, fontSize: 16, marginBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, color: '#000' }}
+              />
+            )}
+          </View>
+
+          {loading && (
+            <View style={{ marginBottom: 16 }}>
+              <ActivityIndicator size="large" color="#007aff" />
+            </View>
+          )}
+
+          {registerError && (
+            <Text style={{ color: '#ef4444', marginBottom: 16, textAlign: 'center' }}>
+              {registerError}
+            </Text>
+          )}
+
+          <View style={{ width: '100%', gap: 12 }}>
+            {mode === 'login' && (
               <>
-                <Pressable onPress={() => { console.log('Botão Reset clicado'); handleReset(); }} style={{ width: '100%', backgroundColor: '#1976d2', borderRadius: 30, paddingVertical: 16, alignItems: 'center', marginBottom: 16 }}>
-                  <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>Enviar e-mail de recuperação</Text>
-                </Pressable>
-                <TouchableOpacity onPress={() => { setMode('login'); console.log('Mudou para login'); }} style={{ marginBottom: 24 }}>
-                  <Text style={{ color: '#1976d2', textAlign: 'center', fontSize: 15 }}>Voltar</Text>
+                <TouchableOpacity
+                  onPress={handleLogin}
+                  disabled={loading}
+                  style={{
+                    backgroundColor: '#007aff',
+                    borderRadius: 12,
+                    padding: 16,
+                    alignItems: 'center',
+                    marginBottom: 8,
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+                    {loading ? 'Entrando...' : 'Entrar'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => promptAsync()}
+                  disabled={loading}
+                  style={{
+                    backgroundColor: '#fff',
+                    borderRadius: 12,
+                    padding: 16,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: '#007aff',
+                    marginBottom: 8,
+                  }}
+                >
+                  <Text style={{ color: '#007aff', fontSize: 16, fontWeight: '600' }}>
+                    Entrar com Google
+                  </Text>
                 </TouchableOpacity>
               </>
             )}
-          </>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+            {mode === 'register' && (
+              <TouchableOpacity
+                onPress={handleRegister}
+                disabled={loading}
+                style={{
+                  backgroundColor: '#007aff',
+                  borderRadius: 12,
+                  padding: 16,
+                  alignItems: 'center',
+                  marginBottom: 8,
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+                  {loading ? 'Cadastrando...' : 'Cadastrar'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {mode === 'reset' && (
+              <TouchableOpacity
+                onPress={handleReset}
+                disabled={loading}
+                style={{
+                  backgroundColor: '#007aff',
+                  borderRadius: 12,
+                  padding: 16,
+                  alignItems: 'center',
+                  marginBottom: 8,
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+                  {loading ? 'Enviando...' : 'Enviar e-mail de recuperação'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={{ marginTop: 24, alignItems: 'center' }}>
+            {mode === 'login' && (
+              <>
+                <TouchableOpacity onPress={() => setMode('register')} style={{ marginBottom: 8 }}>
+                  <Text style={{ color: '#007aff', fontSize: 14 }}>
+                    Não tem uma conta? Cadastre-se
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setMode('reset')}>
+                  <Text style={{ color: '#007aff', fontSize: 14 }}>
+                    Esqueceu sua senha?
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {mode === 'register' && (
+              <TouchableOpacity onPress={() => setMode('login')}>
+                <Text style={{ color: '#007aff', fontSize: 14 }}>
+                  Já tem uma conta? Faça login
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {mode === 'reset' && (
+              <TouchableOpacity onPress={() => setMode('login')}>
+                <Text style={{ color: '#007aff', fontSize: 14 }}>
+                  Voltar ao login
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 
 
@@ -205,6 +285,9 @@ export default function LoginScreen() {
         return;
       }
       setUser({ ...res.user, ...userDoc.data(), id: res.user.uid });
+      
+      // Redirecionar para index após login bem-sucedido
+      router.replace('/');
     } catch (e: any) {
       console.error('Erro no login:', e);
       Alert.alert('Erro', e.message || JSON.stringify(e));

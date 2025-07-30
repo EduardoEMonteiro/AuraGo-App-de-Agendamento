@@ -1,18 +1,18 @@
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useAuthStore } from '../contexts/useAuthStore';
 import { db } from '../services/firebase';
@@ -37,16 +37,21 @@ const DateUtils = {
   formatDate: (date: Date | null) => date ? date.toLocaleDateString('pt-BR') : '',
 };
 
+function safeToDate(data: any): Date | null {
+  if (!data) return null;
+  if (typeof data === 'object' && typeof data.toDate === 'function') {
+    const d = data.toDate();
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(data);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 // --- MAIN COMPONENT ---
 
 export default function HistoricoReceitasScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
   const { user } = useAuthStore();
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerShown: false });
-  }, [navigation]);
 
   const [activeTab, setActiveTab] = useState<'checkout' | 'venda'>('checkout');
   const [period, setPeriod] = useState('today');
@@ -97,39 +102,35 @@ export default function HistoricoReceitasScreen() {
         return;
     }
 
-    const fetchCheckoutRevenue = getDocs(
-      query(collection(db, 'saloes', user.idSalao, 'agendamentos'), orderBy('data'))
-    ).then(snapshot => {
-      const revenues = snapshot.docs
+    Promise.all([
+      getDocs(query(collection(db, 'saloes', user.idSalao, 'agendamentos'), orderBy('data'))),
+      getDocs(query(collection(db, 'saloes', user.idSalao, 'receitas'), orderBy('data')))
+    ]).then(([agendamentosSnap, receitasSnap]) => {
+      const receitasCheck = agendamentosSnap.docs
         .map(doc => ({ id: doc.id, ...(doc.data() as any) }))
         .filter(ag => (ag.status === 'paid' || ag.status === 'completed') && ag.data)
-        .filter(ag => {
-          const agDate = ag.data?.toDate ? ag.data.toDate() : new Date(ag.data);
-          return agDate >= start && agDate <= end;
-        });
-      setReceitasCheckout(revenues);
-    });
+        .map(ag => ({ ...ag, _parsedDate: safeToDate(ag.data) }))
+        .filter(ag => ag._parsedDate && ag._parsedDate >= start && ag._parsedDate <= end);
 
-    const fetchSalesRevenue = getDocs(
-      query(collection(db, 'saloes', user.idSalao, 'receitas'), orderBy('data'))
-    ).then(snapshot => {
-      const revenues = snapshot.docs
+      const receitasVend = receitasSnap.docs
         .map(doc => ({ id: doc.id, ...(doc.data() as any) }))
-        .filter(r => {
-          const rDate = r.data?.toDate ? r.data.toDate() : new Date(r.data);
-          return rDate >= start && rDate <= end;
-        });
-      setReceitasVenda(revenues);
-    });
+        .map(r => ({ ...r, _parsedDate: safeToDate(r.data) }))
+        .filter(r => r._parsedDate && r._parsedDate >= start && r._parsedDate <= end);
 
-    Promise.all([fetchCheckoutRevenue, fetchSalesRevenue]).finally(() => setLoading(false));
+      setReceitasCheckout(receitasCheck);
+      setReceitasVenda(receitasVend);
+    }).catch((err) => {
+      Alert.alert('Erro ao buscar receitas', err?.message || String(err));
+      setReceitasCheckout([]);
+      setReceitasVenda([]);
+    }).finally(() => setLoading(false));
   }, [user?.idSalao, period, customStart, customEnd]);
 
   // --- UI RENDER FUNCTIONS ---
 
   const Header = () => (
     <View style={styles.header}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
         <Feather name="arrow-left" size={24} color={COLORS.primary} />
       </TouchableOpacity>
       <Text style={styles.headerTitle}>Histórico de Receitas</Text>
@@ -194,23 +195,23 @@ export default function HistoricoReceitasScreen() {
 
   const RevenueItem = ({ item }: { item: any }) => {
     const value = (item.finalPrice ?? item.servicoValor ?? item.valor ?? 0);
-    const date = item.data?.toDate ? item.data.toDate() : new Date(item.data);
+    const date = item._parsedDate;
     const details = [
-        item.servicoNome && `Serviço: ${item.servicoNome}`,
-        item.produtosVendidos?.length > 0 && `Produtos: ${item.produtosVendidos.map((p: any) => p.nome).join(', ')}`,
-        item.categoria && `Categoria: ${item.categoria}`
+      item.servicoNome && `Serviço: ${item.servicoNome}`,
+      item.produtosVendidos?.length > 0 && `Produtos: ${item.produtosVendidos.map((p: any) => p.nome).join(', ')}`,
+      item.categoria && `Categoria: ${item.categoria}`
     ].filter(Boolean).join(' • ');
 
     return (
       <View style={styles.card}>
         <Feather name={activeTab === 'checkout' ? 'calendar' : 'tag'} size={24} color={COLORS.lightText} style={styles.cardIcon} />
         <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>{item.clienteNome || item.nome || 'Receita'}</Text>
-            {details && <Text style={styles.cardDescription} numberOfLines={1}>{details}</Text>}
+          <Text style={styles.cardTitle}>{item.clienteNome || item.nome || 'Receita'}</Text>
+          {details && <Text style={styles.cardDescription} numberOfLines={1}>{details}</Text>}
         </View>
         <View style={styles.cardValueContainer}>
-            <Text style={styles.cardValue}>R$ {value.toFixed(2).replace('.', ',')}</Text>
-            <Text style={styles.cardDate}>{DateUtils.formatDate(date)}</Text>
+          <Text style={styles.cardValue}>R$ {value.toFixed(2).replace('.', ',')}</Text>
+          <Text style={styles.cardDate}>{date ? DateUtils.formatDate(date) : '--'}</Text>
         </View>
       </View>
     );

@@ -3,9 +3,22 @@ import { useRouter } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
 import { Formik } from 'formik';
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, FlatList, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+    Alert,
+    Button,
+    FlatList,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Yup from 'yup';
+import { CustomHeader } from '../components/CustomHeader';
 import { Colors, Spacing, Typography } from '../constants/DesignSystem';
 import { useNotifications } from '../contexts/NotificationsContext';
 import { useAuthStore } from '../contexts/useAuthStore';
@@ -14,7 +27,6 @@ import { CadastroModal } from '../src/components/modals/CadastroModal';
 
 const validationSchema = Yup.object().shape({
   nome: Yup.string().required('Nome obrigatório'),
-  precoCompra: Yup.number().typeError('Preço inválido').required('Preço de compra obrigatório'),
   precoVenda: Yup.number().typeError('Preço inválido').required('Preço de venda obrigatório'),
 });
 
@@ -34,6 +46,11 @@ export default function ProdutosScreen() {
   const [movimentacoes, setMovimentacoes] = useState<any[]>([]);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
   const { addNotification } = useNotifications();
+  const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingProduto, setEditingProduto] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+
 
   useEffect(() => {
     if (!idSalao) return;
@@ -52,11 +69,10 @@ export default function ProdutosScreen() {
   // Ao vender um produto, o valor de venda vai para a receita e o valor de compra será lançado como despesa (implementar no fluxo de venda)
   async function cadastrarProduto(values: any, actions: any) {
     if (!idSalao) return;
-    const { nome, precoCompra, precoVenda } = values;
+    const { nome, precoVenda } = values;
     await addDoc(collection(db, `saloes/${idSalao}/produtos`), {
       nome,
-      precoCompra,
-      precoVenda,
+      precoVenda: Number(precoVenda),
       ativo: true,
       criadoEm: new Date(),
     });
@@ -85,7 +101,8 @@ export default function ProdutosScreen() {
   async function salvarEdicao(values: any, actions: any) {
     if (!idSalao || !produtoSelecionado) return;
     await updateDoc(doc(db, `saloes/${idSalao}/produtos/${produtoSelecionado.id}`), {
-      ...values,
+      nome: values.nome,
+      precoVenda: Number(values.precoVenda),
     });
     setModalEdicao(false);
     setProdutoSelecionado(null);
@@ -145,21 +162,9 @@ export default function ProdutosScreen() {
   }, [produtos]);
 
   return (
-    <>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: '#fff' }}>
-        <View style={{ height: Platform.OS === 'ios' ? 56 : 32, backgroundColor: '#fff' }} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', position: 'relative', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', backgroundColor: '#fff' }}>
-          <TouchableOpacity
-            onPress={() => router.replace('/cadastros')}
-            style={{ position: 'absolute', left: 0, padding: 12, zIndex: 2 }}
-            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-          >
-            <Feather name="arrow-left" size={24} color="#1976d2" />
-          </TouchableOpacity>
-          <Text style={[styles.title, { textAlign: 'center', flex: 1 }]}>Produtos</Text>
-        </View>
-      </SafeAreaView>
-      <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <CustomHeader title="Produtos" showBackButton={true} />
+      <View style={styles.content}>
         <TextInput
           placeholder="Buscar por nome"
           value={busca}
@@ -191,14 +196,18 @@ export default function ProdutosScreen() {
         />
         {/* Modal Cadastro */}
         <Formik
-          initialValues={{ nome: '', precoCompra: '', precoVenda: '' }}
+          initialValues={{ nome: '', precoVenda: '' }}
           validationSchema={validationSchema}
           onSubmit={async (values, actions) => {
             await cadastrarProduto(values, actions);
             Alert.alert('Sucesso', 'Produto cadastrado com sucesso!');
           }}
         >
-          {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isValid, dirty }) => (
+          {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isValid, dirty }) => {
+            console.log('Formik values:', values);
+            console.log('Formik errors:', errors);
+            console.log('Formik isValid:', isValid, 'dirty:', dirty);
+            return (
             <CadastroModal
               isVisible={modalCadastro}
               onClose={() => setModalCadastro(false)}
@@ -212,7 +221,7 @@ export default function ProdutosScreen() {
                 value={values.nome || ''}
                 onChangeText={handleChange('nome')}
                 onBlur={handleBlur('nome')}
-                style={[styles.input, errors.nome && touched.nome ? { borderColor: 'red', borderWidth: 1 } : {}]}
+                style={[styles.input, errors.nome && touched.nome ? { borderColor: 'red', borderWidth: 1 } : null]}
               />
               {errors.nome && touched.nome && typeof errors.nome === 'string' && <Text style={styles.error}>{errors.nome}</Text>}
               <Text style={{ fontWeight: '600', color: '#333', marginBottom: 4, marginTop: 12 }}>Valor (R$)</Text>
@@ -221,12 +230,13 @@ export default function ProdutosScreen() {
                 value={values.precoVenda?.toString() || ''}
                 onChangeText={handleChange('precoVenda')}
                 onBlur={handleBlur('precoVenda')}
-                style={[styles.input, errors.precoVenda && touched.precoVenda && styles.inputError]}
+                style={[styles.input, errors.precoVenda && touched.precoVenda ? { borderColor: 'red', borderWidth: 1 } : null]}
                 keyboardType="numeric"
               />
-              {errors.precoVenda && touched.precoVenda && <Text style={styles.error}>{errors.precoVenda}</Text>}
+              {errors.precoVenda && touched.precoVenda && typeof errors.precoVenda === 'string' && <Text style={styles.error}>{errors.precoVenda}</Text>}
             </CadastroModal>
-          )}
+          );
+          }}
         </Formik>
         {/* Modal Edição */}
         <Modal visible={modalEdicao} animationType="slide" transparent>
@@ -250,7 +260,6 @@ export default function ProdutosScreen() {
                 <Formik
                   initialValues={{
                     nome: produtoSelecionado.nome || '',
-                    precoCompra: produtoSelecionado.precoCompra?.toString() || '',
                     precoVenda: produtoSelecionado.precoVenda?.toString() || '',
                   }}
                   validationSchema={validationSchema}
@@ -260,39 +269,45 @@ export default function ProdutosScreen() {
                   }}
                   enableReinitialize
                 >
-                  {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isValid, dirty }) => (
-                    <>
-                      <ScrollView style={styles.modalContent}>
-                        <Text style={{ fontWeight: '600', color: '#333', marginBottom: 4 }}>Nome do produto</Text>
-                        <TextInput
-                          placeholder="Nome*"
-                          value={values.nome || ''}
-                          onChangeText={handleChange('nome')}
-                          onBlur={handleBlur('nome')}
-                          style={[styles.input, errors.nome && touched.nome ? { borderColor: 'red', borderWidth: 1 } : {}]}
-                        />
-                        {errors.nome && touched.nome && typeof errors.nome === 'string' && <Text style={styles.error}>{errors.nome}</Text>}
-                        <Text style={{ fontWeight: '600', color: '#333', marginBottom: 4, marginTop: 12 }}>Valor (R$)</Text>
-                        <TextInput
-                          placeholder="Valor (R$)*"
-                          value={values.precoVenda?.toString() || ''}
-                          onChangeText={handleChange('precoVenda')}
-                          onBlur={handleBlur('precoVenda')}
-                          style={[styles.input, errors.precoVenda && touched.precoVenda ? { borderColor: 'red', borderWidth: 1 } : {}]}
-                          keyboardType="numeric"
-                        />
-                        {errors.precoVenda && touched.precoVenda && <Text style={styles.error}>{errors.precoVenda}</Text>}
-                      </ScrollView>
-                      <View style={styles.modalFooter}>
-                        <Button title="Cancelar" color="#888" onPress={() => setModalEdicao(false)} />
-                        <Button title="Salvar" onPress={handleSubmit as any} disabled={!(isValid && dirty)} />
-                      </View>
-                      <Button title="Ver Histórico de Movimentação" color="#1976d2" onPress={() => { setModalEdicao(false); abrirHistorico(produtoSelecionado); }} />
-                      <TouchableOpacity onPress={deletarProduto} style={{ marginTop: 24 }}>
-                        <Text style={styles.deleteButtonText}>Excluir Produto</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
+                  {({ handleChange, handleBlur, handleSubmit, values = {}, errors = {}, touched = {}, isValid, dirty, setFieldValue }) => {
+                    const handleSubmitAsync = async () => {
+                      setSaving(true);
+                      try {
+                        await handleSubmit();
+                      } finally {
+                        setSaving(false);
+                      }
+                    };
+                    return (
+                      <>
+                        <ScrollView style={styles.modalContent}>
+                          <Text style={{ fontWeight: '600', color: '#333', marginBottom: 4 }}>Nome do produto</Text>
+                          <TextInput
+                            placeholder="Nome*"
+                            value={values.nome || ''}
+                            onChangeText={handleChange('nome')}
+                            onBlur={handleBlur('nome')}
+                            style={[styles.input, errors.nome && touched.nome ? { borderColor: 'red', borderWidth: 1 } : null]}
+                          />
+                          {errors.nome && touched.nome && typeof errors.nome === 'string' && <Text style={styles.error}>{errors.nome}</Text>}
+                          <Text style={{ fontWeight: '600', color: '#333', marginBottom: 4, marginTop: 12 }}>Valor (R$)</Text>
+                          <TextInput
+                            placeholder="Valor (R$)*"
+                            value={values.precoVenda?.toString() || ''}
+                            onChangeText={handleChange('precoVenda')}
+                            onBlur={handleBlur('precoVenda')}
+                            style={[styles.input, errors.precoVenda && touched.precoVenda ? { borderColor: 'red', borderWidth: 1 } : null]}
+                            keyboardType="numeric"
+                          />
+                          {errors.precoVenda && touched.precoVenda && typeof errors.precoVenda === 'string' && <Text style={styles.error}>{errors.precoVenda}</Text>}
+                        </ScrollView>
+                        <View style={styles.modalFooter}>
+                          <Button title="Cancelar" color="#888" onPress={() => setModalEdicao(false)} />
+                          <Button title={saving ? "Salvando..." : "Salvar"} onPress={handleSubmitAsync as any} disabled={!(isValid && dirty) || saving} />
+                        </View>
+                      </>
+                    );
+                  }}
                 </Formik>
               ) : (
                 <Text style={styles.noProductsMessage}>Nenhum produto selecionado para edição.</Text>
@@ -363,12 +378,19 @@ export default function ProdutosScreen() {
           <Feather name="plus" size={32} color="#fff" />
         </TouchableOpacity>
       </View>
-    </>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 16 },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff'
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
   title: { fontSize: 22, fontWeight: 'bold', marginBottom: 8, flex: 1 },
   addBtn: { backgroundColor: '#1976d2', borderRadius: 20, width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
   addBtnText: { color: '#fff', fontSize: 26, fontWeight: 'bold', marginTop: -2 },

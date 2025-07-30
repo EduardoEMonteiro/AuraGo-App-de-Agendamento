@@ -4,13 +4,16 @@ import { useRouter } from 'expo-router';
 import { addDoc, collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-  Button, Dimensions, FlatList, Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch, Text, TextInput, TouchableOpacity, View
+    Alert,
+    Button, Dimensions, FlatList, Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Switch, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CustomHeader } from '../components/CustomHeader';
 import { useAuthStore } from '../contexts/useAuthStore';
 import { db } from '../services/firebase';
 
@@ -346,21 +349,23 @@ export default function FinanceiroScreen() {
     );
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Painel Financeiro</Text>
-            <View style={styles.tabContainer}>
-                <TouchableOpacity style={[styles.tab, activeTab === 'resumo' && styles.activeTab]} onPress={() => setActiveTab('resumo')}><Text style={[styles.tabText, activeTab === 'resumo' && styles.activeTabText]}>Resumo</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.tab, activeTab === 'lancamentos' && styles.activeTab]} onPress={() => setActiveTab('lancamentos')}><Text style={[styles.tabText, activeTab === 'lancamentos' && styles.activeTabText]}>Despesas</Text></TouchableOpacity>
+        <SafeAreaView style={styles.safeArea}>
+            <CustomHeader title="Painel Financeiro" showBackButton={false} />
+            <View style={styles.container}>
+                <View style={styles.tabContainer}>
+                    <TouchableOpacity style={[styles.tab, activeTab === 'resumo' && styles.activeTab]} onPress={() => setActiveTab('resumo')}><Text style={[styles.tabText, activeTab === 'resumo' && styles.activeTabText]}>Resumo</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.tab, activeTab === 'lancamentos' && styles.activeTab]} onPress={() => setActiveTab('lancamentos')}><Text style={[styles.tabText, activeTab === 'lancamentos' && styles.activeTabText]}>Despesas</Text></TouchableOpacity>
+                </View>
+
+                {activeTab === 'resumo' ? renderResumo() : renderLancamentos()}
+
+                <TouchableOpacity style={styles.fab} onPress={() => setAddExpenseSheetVisible(true)}>
+                    <Feather name="plus" size={28} color={Colors.textOnPrimary} />
+                    </TouchableOpacity>
+
+                <AddExpenseSheet isVisible={addExpenseSheetVisible} onClose={() => setAddExpenseSheetVisible(false)} />
             </View>
-
-            {activeTab === 'resumo' ? renderResumo() : renderLancamentos()}
-
-            <TouchableOpacity style={styles.fab} onPress={() => setAddExpenseSheetVisible(true)}>
-                <Feather name="plus" size={28} color={Colors.textOnPrimary} />
-                </TouchableOpacity>
-
-            <AddExpenseSheet isVisible={addExpenseSheetVisible} onClose={() => setAddExpenseSheetVisible(false)} />
-        </View>
+        </SafeAreaView>
     );
 }
 
@@ -439,11 +444,11 @@ const AddExpenseSheet = ({ isVisible, onClose }: { isVisible: boolean, onClose: 
 
     async function handleSave() {
         if (!user?.idSalao) {
-            alert('Usuário não autenticado.');
+            Alert.alert('Erro', 'Salão não identificado.');
             return;
         }
         if (!nome || !valor) {
-            alert('Preencha todos os campos obrigatórios.');
+            Alert.alert('Erro', 'Preencha todos os campos obrigatórios.');
             return;
         }
         setSaving(true);
@@ -473,7 +478,7 @@ const AddExpenseSheet = ({ isVisible, onClose }: { isVisible: boolean, onClose: 
             onClose();
         } catch (e) {
             console.log('Erro ao salvar despesa:', e);
-            alert('Erro ao salvar despesa.');
+            Alert.alert('Erro', 'Erro ao salvar despesa.');
         } finally {
             setSaving(false);
         }
@@ -585,5 +590,5 @@ const LancamentoItem = ({ item }: { item: Lancamento }) => ( <TouchableOpacity s
 
 // --- Estilos ---
 const styles = StyleSheet.create({
-    safeArea:{flex:1,backgroundColor:Colors.background},container:{flex:1,padding:Spacing.screenPadding,backgroundColor:Colors.background},title: { fontSize: 22, fontWeight: 'bold', marginBottom: 8 },sectionTitle:{...Typography.H2,color:Colors.textPrimary,alignSelf:'flex-start',marginBottom:Spacing.base*1.5},label:{...Typography.BodySemibold,color:Colors.textPrimary,marginBottom:Spacing.base,marginTop:Spacing.base*2},labelNoMargin:{...Typography.BodySemibold,color:Colors.textPrimary},bodyText:{...Typography.Body},input:{backgroundColor:'#FFFFFF',borderRadius:Spacing.buttonRadius,paddingHorizontal:Spacing.base*2,height:50,...Typography.Body,borderWidth:1,borderColor:Colors.border},tabContainer:{flexDirection:'row',backgroundColor:'#E5E5EA',borderRadius:Spacing.buttonRadius,padding:4,marginBottom:Spacing.base*2},tab:{flex:1,paddingVertical:Spacing.base,borderRadius:8},activeTab:{backgroundColor:Colors.cardBackground,shadowColor:"#000",shadowOffset:{width:0,height:1},shadowOpacity:0.1,shadowRadius:4,elevation:3},tabText:{...Typography.Body,color:Colors.textSecondary,textAlign:'center'},activeTabText:{...Typography.BodySemibold,color:Colors.primary},summaryCardsContainer:{flexDirection:'row',justifyContent:'space-between',marginHorizontal:-Spacing.base/2},summaryCard:{flex:1,backgroundColor:Colors.cardBackground,borderRadius:Spacing.buttonRadius,padding:Spacing.base*2,marginHorizontal:Spacing.base/2,...Shadows.card},summaryIconContainer:{width:40,height:40,borderRadius:20,justifyContent:'center',alignItems:'center',marginBottom:Spacing.base},summaryTitle:{...Typography.Caption,color:Colors.textSecondary},summaryValue:{...Typography.H2,marginTop:4},saldoCard:{borderRadius:Spacing.buttonRadius,padding:Spacing.base*2,marginTop:Spacing.base*2,alignItems:'center',...Shadows.card},saldoTitle:{...Typography.Body,color:`${Colors.textOnPrimary}99`},saldoValue:{...Typography.H1,color:Colors.textOnPrimary,fontSize:32},chartContainer:{backgroundColor:Colors.cardBackground,borderRadius:Spacing.buttonRadius,padding:Spacing.base*2,alignItems:'center',...Shadows.card},chartTitle:{...Typography.BodySemibold,color:Colors.textPrimary,marginBottom:Spacing.base},listHeader:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:Spacing.base},lancItem:{flexDirection:'row',alignItems:'center',backgroundColor:Colors.cardBackground,padding:Spacing.base*1.5,borderRadius:Spacing.buttonRadius,marginBottom:Spacing.base,...Shadows.card},lancIcon:{width:40,height:40,borderRadius:20,justifyContent:'center',alignItems:'center',marginRight:Spacing.base*1.5},lancDetails:{flex:1},lancCategory:{...Typography.BodySemibold},lancObs:{...Typography.Caption,color:Colors.textSecondary,marginTop:2},lancValue:{...Typography.BodySemibold,fontSize:16},emptyContainer:{flex:1,alignItems:'center',justifyContent:'center',paddingTop:Spacing.base*8},emptyText:{...Typography.H2,color:Colors.textPrimary,marginTop:Spacing.base*2},emptySubtext:{...Typography.Body,color:Colors.textSecondary,marginTop:Spacing.base,textAlign:'center',paddingHorizontal:20},fab:{position:'absolute',bottom:32,right:24,width:60,height:60,borderRadius:30,backgroundColor:Colors.primary,justifyContent:'center',alignItems:'center',...Shadows.card},bottomSheetBackdrop:{position:'absolute',top:0,bottom:0,left:0,right:0,backgroundColor:'rgba(0,0,0,0.4)'},bottomSheetContainer:{position:'absolute',bottom:0,left:0,right:0,backgroundColor:Colors.background,borderTopLeftRadius:20,borderTopRightRadius:20,padding:Spacing.screenPadding,paddingBottom:0,maxHeight:'90%',...Shadows.card},bottomSheetHeader:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingBottom:Spacing.base,borderBottomWidth:1,borderColor:Colors.border},bottomSheetTitle:{...Typography.H2},bottomSheetFooter:{paddingTop:Spacing.base*2,paddingBottom:Spacing.base*4,backgroundColor:Colors.background,borderTopWidth:1,borderColor:Colors.border,marginTop:Spacing.base*2},customPickerButton:{backgroundColor:'#FFFFFF',borderRadius:Spacing.buttonRadius,paddingHorizontal:Spacing.base*2,height:50,borderWidth:1,borderColor:Colors.border,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},switchRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:Spacing.base*2.5,backgroundColor:Colors.cardBackground,padding:Spacing.screenPadding,borderRadius:Spacing.buttonRadius,borderWidth:1,borderColor:Colors.border},recurrentBlock:{marginTop:Spacing.base,padding:Spacing.base*2,backgroundColor:`${Colors.primary}10`,borderRadius:Spacing.buttonRadius,borderWidth:1,borderColor:`${Colors.primary}30`},modalBackdrop:{flex:1,backgroundColor:'rgba(0,0,0,0.5)',justifyContent:'center',alignItems:'center',padding:40},modalContent:{backgroundColor:Colors.cardBackground,borderRadius:Spacing.buttonRadius,padding:Spacing.base,width:'100%',...Shadows.card},modalOption:{paddingVertical:Spacing.base*1.8,paddingHorizontal:Spacing.base*2,borderBottomWidth:1,borderBottomColor:Colors.border},modalOptionText:{...Typography.Body,textAlign:'center'},
+  safeArea:{flex:1,backgroundColor:Colors.background},container:{flex:1,padding:Spacing.screenPadding,backgroundColor:Colors.background},title: { fontSize: 22, fontWeight: 'bold', marginBottom: 8 },sectionTitle:{...Typography.H2,color:Colors.textPrimary,alignSelf:'flex-start',marginBottom:Spacing.base*1.5},label:{...Typography.BodySemibold,color:Colors.textPrimary,marginBottom:Spacing.base,marginTop:Spacing.base*2},labelNoMargin:{...Typography.BodySemibold,color:Colors.textPrimary},bodyText:{...Typography.Body},input:{backgroundColor:'#FFFFFF',borderRadius:Spacing.buttonRadius,paddingHorizontal:Spacing.base*2,height:50,...Typography.Body,borderWidth:1,borderColor:Colors.border},tabContainer:{flexDirection:'row',backgroundColor:'#E5E5EA',borderRadius:Spacing.buttonRadius,padding:4,marginBottom:Spacing.base*2},tab:{flex:1,paddingVertical:Spacing.base,borderRadius:8},activeTab:{backgroundColor:Colors.cardBackground,shadowColor:"#000",shadowOffset:{width:0,height:1},shadowOpacity:0.1,shadowRadius:4,elevation:3},tabText:{...Typography.Body,color:Colors.textSecondary,textAlign:'center'},activeTabText:{...Typography.BodySemibold,color:Colors.primary},summaryCardsContainer:{flexDirection:'row',justifyContent:'space-between',marginHorizontal:-Spacing.base/2},summaryCard:{flex:1,backgroundColor:Colors.cardBackground,borderRadius:Spacing.buttonRadius,padding:Spacing.base*2,marginHorizontal:Spacing.base/2,...Shadows.card},summaryIconContainer:{width:40,height:40,borderRadius:20,justifyContent:'center',alignItems:'center',marginBottom:Spacing.base},summaryTitle:{...Typography.Caption,color:Colors.textSecondary},summaryValue:{...Typography.H2,marginTop:4},saldoCard:{borderRadius:Spacing.buttonRadius,padding:Spacing.base*2,marginTop:Spacing.base*2,alignItems:'center',...Shadows.card},saldoTitle:{...Typography.Body,color:`${Colors.textOnPrimary}99`},saldoValue:{...Typography.H1,color:Colors.textOnPrimary,fontSize:32},chartContainer:{backgroundColor:Colors.cardBackground,borderRadius:Spacing.buttonRadius,padding:Spacing.base*2,alignItems:'center',...Shadows.card},chartTitle:{...Typography.BodySemibold,color:Colors.textPrimary,marginBottom:Spacing.base},listHeader:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:Spacing.base},lancItem:{flexDirection:'row',alignItems:'center',backgroundColor:Colors.cardBackground,padding:Spacing.base*1.5,borderRadius:Spacing.buttonRadius,marginBottom:Spacing.base,...Shadows.card},lancIcon:{width:40,height:40,borderRadius:20,justifyContent:'center',alignItems:'center',marginRight:Spacing.base*1.5},lancDetails:{flex:1},lancCategory:{...Typography.BodySemibold},lancObs:{...Typography.Caption,color:Colors.textSecondary,marginTop:2},lancValue:{...Typography.BodySemibold,fontSize:16},emptyContainer:{flex:1,alignItems:'center',justifyContent:'center',paddingTop:Spacing.base*8},emptyText:{...Typography.H2,color:Colors.textPrimary,marginTop:Spacing.base*2},emptySubtext:{...Typography.Body,color:Colors.textSecondary,marginTop:Spacing.base,textAlign:'center',paddingHorizontal:20},fab:{position:'absolute',bottom:32,right:24,width:60,height:60,borderRadius:30,backgroundColor:Colors.primary,justifyContent:'center',alignItems:'center',...Shadows.card},bottomSheetBackdrop:{position:'absolute',top:0,bottom:0,left:0,right:0,backgroundColor:'rgba(0,0,0,0.4)'},bottomSheetContainer:{position:'absolute',bottom:0,left:0,right:0,backgroundColor:Colors.background,borderTopLeftRadius:20,borderTopRightRadius:20,padding:Spacing.screenPadding,paddingBottom:0,maxHeight:'90%',...Shadows.card},bottomSheetHeader:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingBottom:Spacing.base,borderBottomWidth:1,borderColor:Colors.border},bottomSheetTitle:{...Typography.H2},bottomSheetFooter:{paddingTop:Spacing.base*2,paddingBottom:Spacing.base*4,backgroundColor:Colors.background,borderTopWidth:1,borderColor:Colors.border,marginTop:Spacing.base*2},customPickerButton:{backgroundColor:'#FFFFFF',borderRadius:Spacing.buttonRadius,paddingHorizontal:Spacing.base*2,height:50,borderWidth:1,borderColor:Colors.border,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},switchRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginTop:Spacing.base*2.5,backgroundColor:Colors.cardBackground,padding:Spacing.screenPadding,borderRadius:Spacing.buttonRadius,borderWidth:1,borderColor:Colors.border},recurrentBlock:{marginTop:Spacing.base,padding:Spacing.base*2,backgroundColor:`${Colors.primary}10`,borderRadius:Spacing.buttonRadius,borderWidth:1,borderColor:`${Colors.primary}30`},modalBackdrop:{flex:1,backgroundColor:'rgba(0,0,0,0.5)',justifyContent:'center',alignItems:'center',padding:40},modalContent:{backgroundColor:Colors.cardBackground,borderRadius:Spacing.buttonRadius,padding:Spacing.base,width:'100%',...Shadows.card},modalOption:{paddingVertical:Spacing.base*1.8,paddingHorizontal:Spacing.base*2,borderBottomWidth:1,borderBottomColor:Colors.border},modalOptionText:{...Typography.Body,textAlign:'center'},
 });

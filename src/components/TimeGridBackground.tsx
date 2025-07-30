@@ -32,8 +32,8 @@ const styles = StyleSheet.create({
   lineContainer: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center' },
   timeText: { position: 'absolute', fontSize: 12, color: '#A0A0A0' },
   line: { flex: 1, height: 1 },
-  hourLine: { backgroundColor: Colors.borderStrong },
-  quarterLine: { backgroundColor: Colors.border },
+  hourLine: { backgroundColor: Colors.borderStrong }, // Linhas de hora cheia
+  quarterLine: { backgroundColor: Colors.border }, // Linhas de 15 minutos
 });
 
 export default TimeGridBackground; 

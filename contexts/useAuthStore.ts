@@ -10,8 +10,6 @@ interface AuthState {
   logout: () => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
-  isNavigatingToCheckout: boolean;
-  setNavigatingToCheckout: (navigating: boolean) => void;
   selectedPlan: string | null;
   setSelectedPlan: (plan: string | null) => void;
 }
@@ -19,19 +17,20 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: true,
-  isNavigatingToCheckout: false,
   selectedPlan: null,
   setUser: (user) => set({ user, isLoading: false }),
   logout: async () => {
     try {
+      console.log('Iniciando logout...');
       await signOut(auth);
+      console.log('Logout do Firebase concluído');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }
+    console.log('Limpando estado do usuário');
     set({ user: null, isLoading: false });
   },
   setIsLoading: (loading) => set({ isLoading: loading }),
-  setNavigatingToCheckout: (navigating) => set({ isNavigatingToCheckout: navigating }),
   setSelectedPlan: (plan) => set({ selectedPlan: plan }),
 }));
 
@@ -41,6 +40,7 @@ export function useAuthListener() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log('AuthStateChanged - Usuário:', user ? user.uid : 'null');
       if (user) {
         try {
           // Busca os dados completos do usuário no Firestore

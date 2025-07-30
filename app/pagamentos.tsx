@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
-import { useNavigation, useRouter } from 'expo-router';
-import { collection, deleteDoc, doc, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
+import { useRouter } from 'expo-router';
+import { collection, deleteDoc, doc, getDocs, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,16 +25,12 @@ const ORDEM_FORMAS = [
 ];
 
 export default function PagamentosScreen() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const [formas, setFormas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const router = useRouter();
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  React.useLayoutEffect(() => {
-    navigation.setOptions({ headerShown: false });
-  }, [navigation]);
 
   useEffect(() => {
     if (!user?.idSalao) return;
@@ -49,7 +45,14 @@ export default function PagamentosScreen() {
         await criarFormasDePagamentoPadrao();
         return;
       }
-      setFormas(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const formasData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log('Formas de pagamento carregadas do Firestore:', formasData.map(f => ({
+        id: f.id,
+        nome: (f as any).nome,
+        ativo: (f as any).ativo,
+        taxa: (f as any).taxa
+      })));
+      setFormas(formasData);
       setLoading(false);
     });
     return unsub;
@@ -68,6 +71,35 @@ export default function PagamentosScreen() {
     setLoading(false);
   }
 
+  // Função para migrar salões existentes que não têm as formas de pagamento corretas
+  async function migrarFormasPagamento() {
+    if (!user?.idSalao) return;
+    setLoading(true);
+    try {
+      const batch = writeBatch(db);
+      const ref = collection(db, 'saloes', user.idSalao, 'formasPagamento');
+      
+      // Verificar se já existem formas de pagamento
+      const snap = await getDocs(ref);
+      const formasExistentes = snap.docs.map(doc => doc.id);
+      
+      // Adicionar apenas as formas que não existem
+      FORMAS_PADRAO.forEach(f => {
+        if (!formasExistentes.includes(f.nome)) {
+          const docRef = doc(ref, f.nome);
+          batch.set(docRef, f);
+        }
+      });
+      
+      await batch.commit();
+      console.log('Migração de formas de pagamento concluída');
+    } catch (e) {
+      console.error('Erro na migração:', e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleSwitch(id: string, value: boolean) {
     setUpdatingId(id);
     try {
@@ -83,9 +115,15 @@ export default function PagamentosScreen() {
   async function handleTaxaChange(id: string, taxa: string) {
     setUpdatingId(id);
     try {
+      const taxaNumerica = Number(taxa.replace(',', '.'));
+      console.log(`Salvando taxa para ${id}: ${taxaNumerica}%`);
+      
       const ref = doc(db, 'saloes', user.idSalao, 'formasPagamento', id);
-      await updateDoc(ref, { taxa: Number(taxa.replace(',', '.')) });
+      await updateDoc(ref, { taxa: taxaNumerica });
+      
+      console.log(`Taxa salva com sucesso para ${id}: ${taxaNumerica}%`);
     } catch (e) {
+      console.error('Erro ao salvar taxa:', e);
       Alert.alert('Erro', 'Não foi possível atualizar a taxa.');
     } finally {
       setUpdatingId(null);
@@ -96,7 +134,7 @@ export default function PagamentosScreen() {
     <View style={styles.container}>
       {/* Header customizado */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : navigation.goBack())} style={styles.backButton} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
+        <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.back())} style={styles.backButton} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
           <Feather name="arrow-left" size={24} color="#1976d2" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Formas de Pagamento</Text>
@@ -106,6 +144,24 @@ export default function PagamentosScreen() {
         <ActivityIndicator style={{ marginTop: 32 }} size="large" color="#1976d2" />
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+          {/* Botão de migração para salões existentes */}
+          {formas.length === 0 && (
+            <TouchableOpacity 
+              style={{ 
+                backgroundColor: '#1976d2', 
+                padding: 16, 
+                borderRadius: 8, 
+                marginBottom: 16,
+                alignItems: 'center'
+              }}
+              onPress={migrarFormasPagamento}
+            >
+              <Text style={{ color: '#fff', fontWeight: 'bold' }}>
+                Migrar Formas de Pagamento
+              </Text>
+            </TouchableOpacity>
+          )}
+          
           {formas
             .slice()
             .sort((a, b) => ORDEM_FORMAS.indexOf(a.nome) - ORDEM_FORMAS.indexOf(b.nome))

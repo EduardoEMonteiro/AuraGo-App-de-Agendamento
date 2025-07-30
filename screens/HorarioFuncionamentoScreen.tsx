@@ -1,18 +1,17 @@
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../contexts/useAuthStore';
@@ -32,15 +31,9 @@ export const screenOptions = {
   headerShown: false,
 };
 
-export default function HorarioFuncionamentoScreen({ route }: any) {
-  const navigation = useNavigation();
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerShown: false });
-  }, [navigation]);
+export default function HorarioFuncionamentoScreen() {
   const router = useRouter();
-  const routeUser = route?.params?.user;
-  const globalUser = useAuthStore((state) => state.user);
-  const user = routeUser || globalUser;
+  const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
   const [dias, setDias] = useState(() =>
     DIAS_SEMANA.map((d, i) => ({
@@ -106,24 +99,16 @@ export default function HorarioFuncionamentoScreen({ route }: any) {
 
   async function handleSalvar() {
     if (!user?.idSalao) {
-      Alert.alert('Erro', 'Salão não identificado!');
+      Alert.alert('Erro', 'Salão não identificado.');
       return;
     }
-    setSalvando(true);
     try {
-      const ref = doc(db, 'configuracoes', `horario_funcionamento_${user.idSalao}`);
-      await setDoc(ref, { dias });
-      // Atualiza também no documento do salão
-      const salaoRef = doc(db, 'saloes', user.idSalao);
-      await setDoc(salaoRef, { horarioFuncionamento: dias }, { merge: true });
-      router.back();
-      setTimeout(() => {
-        Alert.alert('Sucesso', 'Horário de funcionamento salvo!');
-      }, 100);
-    } catch (e) {
-      Alert.alert('Erro ao salvar', e?.message || String(e));
-    } finally {
-      setSalvando(false);
+      const horariosRef = doc(db, 'saloes', user.idSalao, 'configuracoes', 'horarios');
+      await setDoc(horariosRef, { dias });
+      Alert.alert('Sucesso', 'Horários salvos com sucesso!');
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível salvar os horários.');
+      console.log('ERRO AO SALVAR HORÁRIOS:', error);
     }
   }
 
@@ -131,7 +116,7 @@ export default function HorarioFuncionamentoScreen({ route }: any) {
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]} pointerEvents="box-none">
         <TouchableOpacity
-          onPress={() => (router.canGoBack ? router.canGoBack() && router.back() : navigation.goBack())}
+          onPress={() => (router.canGoBack ? router.canGoBack() && router.back() : router.back())}
           style={[styles.backButton, { width: 48, height: 48, borderRadius: 24 }]}
           hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
         >

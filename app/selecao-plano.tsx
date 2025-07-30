@@ -1,43 +1,32 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuthStore } from '../contexts/useAuthStore';
 import { createRealCheckoutSession } from '../services/stripe';
 
-// Ícone de check para recursos
-const CheckIcon = ({ color = "#48BB78" }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-    <Path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill={color} />
-  </Svg>
-);
-
-// Dados do plano único
 const PLANO_AURA = {
   id: 'essencial',
-  nome: 'Aura Essencial',
   preco: 'R$ 19,90',
   recorrencia: '/mês',
   recursos: [
-    'Agenda e Clientes Ilimitados',
-    'Confirmações via WhatsApp com 1 clique',
-    'Controle Financeiro com Lucro Real',
-    'Cadastro de Serviços e Produtos',
-    'Suporte via Chat',
-  ],
+    'Agendamento ilimitado',
+    'Gestão de clientes',
+    'Relatórios financeiros',
+    'Notificações automáticas',
+    'Suporte prioritário'
+  ]
 };
 
-export default function AssinaturaScreen() {
-  const { user, setNavigatingToCheckout } = useAuthStore();
+const CheckIcon = ({ color = "#48BB78" }) => (
+  <View style={{ width: 20, height: 20, marginRight: 12, justifyContent: 'center', alignItems: 'center' }}>
+    <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: color, justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>✓</Text>
+    </View>
+  </View>
+);
+
+export default function SelecaoPlanoScreen() {
+  const { user } = useAuthStore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -49,22 +38,26 @@ export default function AssinaturaScreen() {
       );
       return;
     }
+
     setLoading(true);
-    setNavigatingToCheckout(true);
     try {
       const sessionData = await createRealCheckoutSession(PLANO_AURA.id as 'essencial', user.idSalao);
+      
       if (sessionData && sessionData.url) {
+        console.log('SelecaoPlanoScreen - URL de checkout recebida. Navegando...');
+        
+        // Navegação direta e segura
         router.push({
           pathname: '/stripe-checkout',
           params: { checkoutUrl: sessionData.url }
         });
+
       } else {
-        setNavigatingToCheckout(false);
         throw new Error('A resposta do servidor não continha uma URL de checkout.');
       }
     } catch (error: any) {
+      console.error('SelecaoPlanoScreen - Erro na assinatura:', error);
       Alert.alert('Erro na Assinatura', error.message || 'Não foi possível processar sua assinatura. Tente novamente.');
-      setNavigatingToCheckout(false);
     } finally {
       setLoading(false);
     }
@@ -148,79 +141,67 @@ const styles = StyleSheet.create({
   },
   ofertaCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 24,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: "#4A5568",
+    marginBottom: 32,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 15,
-    elevation: 5,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   precoContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'center',
-    marginBottom: 20,
+    alignItems: 'center',
+    marginBottom: 24,
   },
   planoPreco: {
-    fontSize: 42,
+    fontSize: 48,
     fontWeight: 'bold',
-    color: '#1A202C',
+    color: '#2D3748',
+    marginBottom: 4,
   },
   planoRecorrencia: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#4A5568',
-    marginLeft: 6,
+    color: '#718096',
   },
   divider: {
     height: 1,
-    backgroundColor: '#EDF2F7',
-    marginVertical: 16,
+    backgroundColor: '#E2E8F0',
+    marginBottom: 24,
   },
   recursosContainer: {
-    gap: 16,
+    marginBottom: 24,
   },
   recursosTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#2D3748',
-    marginBottom: 8,
+    marginBottom: 16,
   },
   recursoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    marginBottom: 12,
   },
   recursoTexto: {
-    fontSize: 15,
-    color: '#2D3748',
+    fontSize: 16,
+    color: '#4A5568',
     flex: 1,
-    lineHeight: 22,
   },
   footer: {
-    paddingTop: 32,
-    paddingBottom: 20,
     alignItems: 'center',
   },
   assinarButton: {
     backgroundColor: '#48BB78',
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: 'center',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    marginBottom: 16,
     width: '100%',
-    shadowColor: "#38A169",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    alignItems: 'center',
   },
   buttonDisabled: {
     backgroundColor: '#A0AEC0',
-    elevation: 0,
-    shadowOpacity: 0,
   },
   assinarButtonText: {
     color: '#FFFFFF',
@@ -228,8 +209,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   footerText: {
-    marginTop: 16,
-    fontSize: 13,
+    fontSize: 14,
     color: '#718096',
+    textAlign: 'center',
   },
-});
+}); 

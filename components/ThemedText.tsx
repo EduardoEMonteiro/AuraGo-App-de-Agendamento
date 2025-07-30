@@ -1,4 +1,6 @@
+import { memo } from 'react';
 import { StyleSheet, Text, type TextProps } from 'react-native';
+import { heightPercentageToDP as hp } from 'react-native-responsive-screen';
 
 import { useThemeColor } from '@/hooks/useThemeColor';
 
@@ -8,13 +10,13 @@ export type ThemedTextProps = TextProps & {
   type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
 };
 
-export function ThemedText({
+export const ThemedText = memo<ThemedTextProps>(({
   style,
   lightColor,
   darkColor,
   type = 'default',
   ...rest
-}: ThemedTextProps) {
+}) => {
   const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
 
   return (
@@ -31,30 +33,32 @@ export function ThemedText({
       {...rest}
     />
   );
-}
+});
+
+ThemedText.displayName = 'ThemedText';
 
 const styles = StyleSheet.create({
   default: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: hp('2%'), // ~16px em tela padrão
+    lineHeight: hp('3%'), // ~24px em tela padrão
   },
   defaultSemiBold: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: hp('2%'), // ~16px em tela padrão
+    lineHeight: hp('3%'), // ~24px em tela padrão
     fontWeight: '600',
   },
   title: {
-    fontSize: 32,
+    fontSize: hp('4%'), // ~32px em tela padrão
     fontWeight: 'bold',
-    lineHeight: 32,
+    lineHeight: hp('4%'), // ~32px em tela padrão
   },
   subtitle: {
-    fontSize: 20,
+    fontSize: hp('2.5%'), // ~20px em tela padrão
     fontWeight: 'bold',
   },
   link: {
-    lineHeight: 30,
-    fontSize: 16,
+    lineHeight: hp('3.75%'), // ~30px em tela padrão
+    fontSize: hp('2%'), // ~16px em tela padrão
     color: '#0a7ea4',
   },
 });

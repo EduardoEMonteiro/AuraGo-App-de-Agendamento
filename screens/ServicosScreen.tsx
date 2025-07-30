@@ -3,9 +3,10 @@ import { useRouter } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
 import { Formik } from 'formik';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, Platform, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Yup from 'yup';
+import { CustomHeader } from '../components/CustomHeader';
 import { Colors, Spacing, Typography } from '../constants/DesignSystem';
 import { useAuthStore } from '../contexts/useAuthStore';
 import { useSalaoInfo } from '../hooks/useSalaoInfo';
@@ -160,22 +161,13 @@ export default function ServicosScreen() {
   }
 
   return (
-    <>
-      <SafeAreaView edges={['top']} style={{ backgroundColor: '#fff' }}>
-        <View style={{ height: Platform.OS === 'ios' ? 56 : 32, backgroundColor: '#fff' }} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', position: 'relative', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', backgroundColor: '#fff' }}>
-          <TouchableOpacity
-            onPress={() => router.replace('/cadastros')}
-            style={{ position: 'absolute', left: 0, padding: 12, zIndex: 2 }}
-            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-          >
-            <Feather name="arrow-left" size={24} color="#1976d2" />
-          </TouchableOpacity>
-          <Text style={[styles.title, { textAlign: 'center', flex: 1 }]}>Serviços</Text>
-        </View>
-      </SafeAreaView>
-      <View style={styles.container}>
-        
+    <SafeAreaView style={styles.container}>
+      <CustomHeader
+        title="Serviços"
+        showBackButton={true}
+      />
+      
+      <View style={styles.content}>
         <TextInput
           placeholder="Buscar por nome"
           value={busca}
@@ -190,8 +182,8 @@ export default function ServicosScreen() {
               <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Text style={{
                   ...styles.nome,
-                  color: item.ativo === false ? '#d32f2f' : styles.nome.color,
-                  fontWeight: item.ativo === false ? 'bold' : styles.nome.fontWeight,
+                  color: item.ativo === false ? '#d32f2f' : '#000000',
+                  fontWeight: item.ativo === false ? 'bold' : 'bold',
                   opacity: item.ativo === false ? 0.6 : 1,
                 }}>
                   {item.nome} {item.ativo === false && '(Inativo)'}
@@ -274,7 +266,7 @@ export default function ServicosScreen() {
                 onClose={() => setModalCorVisivel(false)}
                 colors={PALETA_CORES}
                 selectedColor={values.cor || corSugerida || PALETA_CORES[0]}
-                onSelect={(cor) => setFieldValue('cor', cor)}
+                onSelect={(cor: string) => setFieldValue('cor', cor)}
               />
             </>
           )}
@@ -339,7 +331,7 @@ export default function ServicosScreen() {
                     <Text style={{ fontSize: 16, fontWeight: '600', color: '#333' }}>Serviço Ativo</Text>
                     <Switch
                       value={values.ativo}
-                      onValueChange={(value) => setFieldValue('ativo', value)}
+                      onValueChange={(value: boolean) => setFieldValue('ativo', value)}
                       trackColor={{ false: "#ccc", true: "#81b0ff" }}
                       thumbColor={values.ativo ? "#1976d2" : "#f4f3f4"}
                     />
@@ -359,7 +351,7 @@ export default function ServicosScreen() {
                   onClose={() => setModalCorVisivel(false)}
                   colors={PALETA_CORES}
                   selectedColor={values.cor || PALETA_CORES[0]}
-                  onSelect={(cor) => setFieldValue('cor', cor)}
+                  onSelect={(cor: string) => setFieldValue('cor', cor)}
                 />
               </>
             )}
@@ -388,12 +380,19 @@ export default function ServicosScreen() {
           <Feather name="plus" size={32} color="#fff" />
         </TouchableOpacity>
       </View>
-    </>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 16 },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff'
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
   title: { fontSize: 22, fontWeight: 'bold', marginBottom: 8, flex: 1 },
   addBtn: { backgroundColor: '#1976d2', borderRadius: 20, width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
   addBtnText: { color: '#fff', fontSize: 26, fontWeight: 'bold', marginTop: -2 },

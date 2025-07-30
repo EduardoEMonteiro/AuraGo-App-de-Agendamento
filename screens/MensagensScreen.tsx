@@ -1,43 +1,38 @@
 import { Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuthStore } from '../contexts/useAuthStore';
 import { db } from '../services/firebase';
 
 const EXEMPLO_CONFIRMACAO = `Olá [NOME]! 😊 Seu agendamento para [SERVIÇO] com [PROFISSIONAL] está confirmado para o dia [DATA] às [HORA]. Qualquer dúvida, estamos à disposição. 💇‍♀️✨ Endereço: [ENDEREÇO]`;
 const EXEMPLO_LEMBRETE = `Oi [NOME], tudo bem? Só passando pra lembrar do seu agendamento amanhã! 📍 [SERVIÇO] com [PROFISSIONAL] 📅 Data: [DATA] ⏰ Horário: [HORA] Qualquer mudança é só nos avisar com antecedência 💖 Endereço: [ENDEREÇO]`;
 
-export default function MensagensScreen({ route }: any) {
-  const params = useLocalSearchParams();
-  let user: any = undefined;
-  if (params.user) {
-    if (typeof params.user === 'string') {
-      try {
-        user = JSON.parse(params.user);
-      } catch {
-        user = undefined;
-      }
-    } else {
-      user = params.user;
-    }
-  }
-  console.log('MENSAGENS user:', user);
-  console.log('MENSAGENS idSalao:', user?.idSalao);
+export default function MensagensScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerShown: false });
-  }, [navigation]);
+  const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
+
   const [mensagens, setMensagens] = useState({ confirmacao: '', lembrete: '' });
   const [loading, setLoading] = useState(true);
-  const [salvando, setSalvando] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState<'confirmacao' | 'lembrete'>('confirmacao');
   const confirmacaoRef = useRef<TextInput>(null);
   const lembreteRef = useRef<TextInput>(null);
+  const [salvando, setSalvando] = useState(false);
   const TAGS_WHATS = [
     { tag: '[NOME]', desc: 'Nome do cliente' },
     { tag: '[SERVIÇO]', desc: 'Nome do serviço agendado' },
@@ -55,18 +50,48 @@ export default function MensagensScreen({ route }: any) {
         setLoading(false);
         return;
       }
+      
+      // Primeiro, tentar buscar da estrutura correta
       const ref = doc(db, 'saloes', user.idSalao, 'configuracoes', 'mensagensWhatsapp');
       const snap = await getDoc(ref);
+      
       if (snap.exists()) {
         const data = snap.data();
         setMensagens({
           confirmacao: data.confirmacao || EXEMPLO_CONFIRMACAO,
           lembrete: data.lembrete || EXEMPLO_LEMBRETE,
         });
-        console.log('Mensagem carregada do Firestore:', data);
+        console.log('Mensagem carregada do Firestore (estrutura correta):', data);
       } else {
-         setMensagens({ confirmacao: EXEMPLO_CONFIRMACAO, lembrete: EXEMPLO_LEMBRETE });
-         console.log('Mensagem padrão usada.');
+        // Se não existir na estrutura correta, tentar migrar do local antigo
+        console.log('Tentando migrar mensagens do local antigo...');
+        try {
+          const refAntigo = doc(db, 'configuracoes', `mensagensWhatsapp_${user.idSalao}`);
+          const snapAntigo = await getDoc(refAntigo);
+          
+          if (snapAntigo.exists()) {
+            const dataAntigo = snapAntigo.data();
+            const mensagensMigradas = {
+              confirmacao: dataAntigo.confirmacao || EXEMPLO_CONFIRMACAO,
+              lembrete: dataAntigo.lembrete || EXEMPLO_LEMBRETE,
+            };
+            
+            // Salvar na estrutura correta
+            await setDoc(ref, mensagensMigradas, { merge: true });
+            
+            // Deletar do local antigo
+            await deleteDoc(refAntigo);
+            
+            setMensagens(mensagensMigradas);
+            console.log('Migração concluída com sucesso!');
+          } else {
+            setMensagens({ confirmacao: EXEMPLO_CONFIRMACAO, lembrete: EXEMPLO_LEMBRETE });
+            console.log('Mensagem padrão usada (não havia dados para migrar).');
+          }
+        } catch (error) {
+          console.log('Erro na migração:', error);
+          setMensagens({ confirmacao: EXEMPLO_CONFIRMACAO, lembrete: EXEMPLO_LEMBRETE });
+        }
       }
       setLoading(false);
     }
@@ -91,27 +116,20 @@ export default function MensagensScreen({ route }: any) {
   }
 
   async function handleSalvar() {
-    console.log('SALVAR CHAMADO', mensagens);
-    console.log('user?.idSalao:', user?.idSalao);
     if (!user?.idSalao) {
-      Alert.alert('Erro', 'ID do salão não encontrado. Não é possível salvar mensagens automáticas.');
+      Alert.alert('Erro', 'Salão não identificado.');
       return;
     }
     Keyboard.dismiss();
     setSalvando(true);
-    // Caminho correto: saloes/{idSalao}/configuracoes/mensagensWhatsapp
-    const ref = doc(db, 'saloes', user.idSalao, 'configuracoes', 'mensagensWhatsapp');
-    console.log('Firestore doc path:', `saloes/${user.idSalao}/configuracoes/mensagensWhatsapp`);
     try {
-      console.log('ANTES DO setDoc');
+      // Corrigido: Salvar dentro da estrutura do salão
+      const ref = doc(db, 'saloes', user.idSalao, 'configuracoes', 'mensagensWhatsapp');
       await setDoc(ref, mensagens, { merge: true });
-      console.log('DEPOIS DO setDoc');
-      Alert.alert('Alteração bem sucedida', '', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+      Alert.alert('Sucesso', 'Mensagens salvas com sucesso!');
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível salvar as mensagens.');
-      console.log('ERRO AO SALVAR:', error && (error.message || error.toString()), error);
+      console.log('ERRO AO SALVAR:', error instanceof Error ? error.message : String(error), error);
     } finally {
       setSalvando(false);
     }
@@ -163,7 +181,7 @@ export default function MensagensScreen({ route }: any) {
       >
         {/* Header com seta para voltar */}
         <View style={[styles.header, { paddingTop: insets.top + 16 }] }>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Feather name="arrow-left" size={24} color="#1976d2" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Mensagens Automáticas</Text>
@@ -190,9 +208,9 @@ export default function MensagensScreen({ route }: any) {
         <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }] }>
           <TouchableOpacity style={styles.saveButton} onPress={handleSalvar} disabled={salvando}>
             {salvando ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.saveButtonText}>Salvar Alterações</Text>
+              <Text style={styles.saveButtonText}>Salvar</Text>
             )}
           </TouchableOpacity>
         </View>

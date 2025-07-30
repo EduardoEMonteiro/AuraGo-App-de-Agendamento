@@ -1,60 +1,143 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
+import { CustomHeader } from '../components/CustomHeader';
+import { useAuthStore } from '../contexts/useAuthStore';
 
 export default function StripeCheckoutScreen() {
-  const router = useRouter();
-  // << MUDANÇA IMPORTANTE: Pegamos a URL real dos parâmetros de navegação
-  const { checkoutUrl } = useLocalSearchParams<{ checkoutUrl: string }>();
+  const router = useRouter();
+  const { checkoutUrl } = useLocalSearchParams<{ checkoutUrl: string }>();
+  const { setNavigatingToCheckout } = useAuthStore();
 
-  const handleNavigationStateChange = (navState: any) => {
-    const { url } = navState;
-    console.log("WebView navegando para:", url);
+  // Timeout de segurança para resetar o estado se o usuário sair sem completar
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      console.log('Timeout de segurança: resetando estado de navegação...');
+      setNavigatingToCheckout(false);
+    }, 300000); // 5 minutos
 
-    // << MUDANÇA IMPORTANTE: Usamos as URLs do nosso backend
-    if (url.includes('meuapp://checkout/sucesso')) {
-      handleSuccess();
-    }
-    if (url.includes('meuapp://checkout/cancelado')) {
-      handleCancel();
-    }
-  };
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [setNavigatingToCheckout]);
 
-  const handleSuccess = () => {
-    Alert.alert('Pagamento Concluído!', 'Seu plano foi ativado com sucesso. Você será redirecionado.');
-    // O webhook já atualizou o status no backend. Apenas navegamos.
-    router.replace('/(tabs)/agenda'); 
-  };
+  const handleNavigationStateChange = (navState: any) => {
+    const { url } = navState;
+    console.log('URL de navegação:', url);
+    
+    // Verificar URLs de sucesso e cancelamento
+    if (url.includes('aura://checkout/sucesso') || url.includes('checkout/sucesso')) {
+      console.log('Pagamento concluído com sucesso!');
+      handleSuccess();
+    }
+    if (url.includes('aura://checkout/cancelado') || url.includes('checkout/cancelado')) {
+      console.log('Pagamento cancelado!');
+      handleCancel();
+    }
+    // Verificar URLs do Stripe que indicam sucesso
+    if (url.includes('checkout.stripe.com') && url.includes('success')) {
+      console.log('Pagamento Stripe concluído com sucesso!');
+      handleSuccess();
+    }
+  };
 
-  const handleCancel = () => {
-    Alert.alert('Pagamento Cancelado', 'Seu pagamento foi cancelado.');
-    router.back();
-  };
+  const handleSuccess = () => {
+    console.log('Pagamento bem-sucedido, resetando estado de navegação...');
+    setNavigatingToCheckout(false); // ✅ RESETAR O ESTADO
+    console.log('Redirecionando para tela de boas-vindas...');
+    // Aguardar um pouco para garantir que o Stripe terminou
+    setTimeout(() => {
+      router.replace('/boas-vindas' as any);
+    }, 1000);
+  };
 
-  if (!checkoutUrl) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorTitle}>URL de Checkout Não Encontrada</Text>
-      </View>
-    );
-  }
+  const handleCancel = () => {
+    console.log('Cancelamento detectado, resetando estado de navegação...');
+    setNavigatingToCheckout(false); // ✅ RESETAR O ESTADO
+    Alert.alert('Pagamento Cancelado', 'Seu pagamento foi cancelado.');
+    // Usar setTimeout para evitar navegação durante montagem
+    setTimeout(() => {
+      router.back();
+    }, 100);
+  };
 
-  return (
-    <View style={styles.container}>
-      <WebView
-        source={{ uri: checkoutUrl }}
-        style={styles.webview}
-        startInLoadingState={true}
-        onNavigationStateChange={handleNavigationStateChange}
-      />
-    </View>
-  );
+  // Função para renderizar a tela de carregamento do WebView
+  const renderLoadingView = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#007aff" />
+      <Text>Carregando pagamento...</Text>
+    </View>
+  );
+
+  // Se a URL não for encontrada, mostra uma mensagem de erro
+  if (!checkoutUrl) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <CustomHeader title="Pagamento" showBackButton={false} />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>URL de Checkout Não Encontrada</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Renderiza o WebView se a URL existir
+  return (
+    <SafeAreaView style={styles.container}>
+      <CustomHeader title="Pagamento" showBackButton={false} />
+      <View style={styles.webviewContainer}>
+        <WebView
+          source={{ uri: checkoutUrl }}
+          style={styles.webview}
+          startInLoadingState={true}
+          onNavigationStateChange={handleNavigationStateChange}
+          renderLoading={renderLoadingView}
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.warn('WebView error: ', nativeEvent);
+          }}
+          onHttpError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.warn('WebView HTTP error: ', nativeEvent);
+          }}
+          onMessage={(event) => {
+            console.log('WebView message:', event.nativeEvent.data);
+          }}
+        />
+      </View>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', padding: 20 },
-  errorTitle: { fontSize: 20, fontWeight: 'bold', color: '#f44336' },
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  webview: { flex: 1 },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  webviewContainer: {
+    flex: 1,
+  },
+  webview: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ef4444',
+    textAlign: 'center',
+  },
 });

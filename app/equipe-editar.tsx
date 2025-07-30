@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
-import { Alert, SafeAreaView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuthStore } from '../contexts/useAuthStore';
 import { db } from '../services/firebase';
 
@@ -173,11 +173,15 @@ export default function EquipeEditarScreen() {
       {membro.status === 'ativo' && (
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.salvar, salvando && styles.salvarDisabled]}
+            style={[styles.button, styles.primaryButton]}
             onPress={handleSalvar}
             disabled={salvando}
           >
-            <Text style={styles.salvarText}>{salvando ? 'Salvando...' : 'Salvar'}</Text>
+            {salvando ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Salvar</Text>
+            )}
           </TouchableOpacity>
         </View>
       )}
@@ -221,17 +225,17 @@ const styles = StyleSheet.create({
     borderTopColor: '#eee',
     backgroundColor: '#fff',
   },
-  salvar: {
+  button: {
     backgroundColor: '#1976d2',
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 40,
     alignItems: 'center',
   },
-  salvarDisabled: {
-    opacity: 0.5,
+  primaryButton: {
+    backgroundColor: '#1976d2',
   },
-  salvarText: {
+  buttonText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 15,

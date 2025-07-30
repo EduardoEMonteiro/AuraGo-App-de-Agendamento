@@ -1,7 +1,7 @@
 // Configuração do Firebase para Expo
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, initializeAuth, type Auth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { disableNetwork, enableNetwork, getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyA_OCKJ5q4xEeqJ822bzkYpXAWH9gUEb-E',
@@ -13,7 +13,55 @@ const firebaseConfig = {
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+// Configuração robusta do Firestore
 export const db = getFirestore(app);
+
+// Função para reconectar ao Firestore em caso de erro
+export const reconnectFirestore = async () => {
+  try {
+    console.log('Tentando reconectar ao Firestore...');
+    await disableNetwork(db);
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Aguarda 1 segundo
+    await enableNetwork(db);
+    console.log('✅ Firestore reconectado com sucesso');
+    return true;
+  } catch (error) {
+    console.error('❌ Erro ao reconectar Firestore:', error);
+    return false;
+  }
+};
+
+// Função para verificar se o Firestore está conectado
+export const isFirestoreConnected = () => {
+  try {
+    return db && db.app && db.app.name !== undefined;
+  } catch (error) {
+    console.log('Erro ao verificar conexão Firestore:', error);
+    return false;
+  }
+};
+
+// Função para tentar reconexão automática
+export const autoReconnectFirestore = async (maxAttempts = 3) => {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    console.log(`🔄 Tentativa ${attempt}/${maxAttempts} de reconexão...`);
+    
+    const success = await reconnectFirestore();
+    if (success) {
+      console.log('✅ Reconexão bem-sucedida!');
+      return true;
+    }
+    
+    if (attempt < maxAttempts) {
+      console.log(`⏳ Aguardando ${attempt * 2} segundos antes da próxima tentativa...`);
+      await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+    }
+  }
+  
+  console.error('❌ Falha na reconexão após todas as tentativas');
+  return false;
+};
 
 let auth: Auth;
 if (

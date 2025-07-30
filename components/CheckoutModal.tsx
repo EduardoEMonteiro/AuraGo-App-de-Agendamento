@@ -17,7 +17,7 @@ interface FormaPgto {
   label: string;
   icon: string;
   ativa?: boolean;
-  taxa?: number; // Adicionado para armazenar a taxa
+  taxa: number; // Taxa sempre presente como número
 }
 
 interface ProdutoVenda {
@@ -97,14 +97,28 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     let valorDaTaxa = 0;
     const taxaRaw = Number(formaDePagamentoSelecionada.taxa);
+    console.log('=== DEBUG CHECKOUT ===');
+    console.log('Checkout - Forma de pagamento:', formaDePagamentoSelecionada.label);
+    console.log('Checkout - Taxa configurada:', taxaRaw);
+    console.log('Checkout - Taxa original (string):', formaDePagamentoSelecionada.taxa);
+    console.log('Checkout - Valor total da venda:', valorTotalDaVenda);
+    console.log('Checkout - Objeto forma de pagamento completo:', formaDePagamentoSelecionada);
+    
     if (!isNaN(taxaRaw) && taxaRaw > 0) {
       const taxaPercentual = taxaRaw / 100;
       valorDaTaxa = valorTotalDaVenda * taxaPercentual;
+      console.log('Checkout - Taxa calculada:', valorDaTaxa);
+      console.log('Checkout - Taxa percentual:', taxaPercentual);
+    } else {
+      console.log('Checkout - Taxa não aplicada (taxaRaw <= 0 ou NaN)');
     }
+    
     // Lançar receita BRUTA
     onFinishCheckout({ finalPrice: valorTotalDaVenda, paymentMethod: formaDePagamentoSelecionada, produtosVendidos: produtosSelecionados });
+    
     // Lançar despesa de taxa, se houver
     if (valorDaTaxa > 0.0001 && idSalao) {
+      console.log('Checkout - Criando despesa de taxa:', valorDaTaxa);
       const despesasRef = collection(db, 'saloes', idSalao, 'despesas');
       await addDoc(despesasRef, {
         nome: `Taxa - ${formaDePagamentoSelecionada.label}`,
@@ -112,7 +126,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         categoria: 'Taxas de Operadora',
         data: new Date(),
       });
+      console.log('Checkout - Despesa de taxa criada com sucesso');
+    } else {
+      console.log('Checkout - Despesa de taxa não criada (valorDaTaxa <= 0.0001 ou idSalao não encontrado)');
     }
+    console.log('=== FIM DEBUG CHECKOUT ===');
     onClose();
     setCurrentPaymentValue('');
     setProdutosSelecionados([]);
