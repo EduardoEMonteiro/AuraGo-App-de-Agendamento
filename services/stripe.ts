@@ -43,45 +43,59 @@ export async function initializeStripe() {
  * @param {string} idSalao - O ID do salão do usuário logado (ex: user.idSalao).
  */
 export async function createRealCheckoutSession(plano: 'essencial' | 'pro', idSalao: string) {
+  console.log('=== DEBUG STRIPE SERVICE ===');
+  console.log('Parâmetros recebidos:', { plano, idSalao });
+  
   const priceId = STRIPE_PRICE_IDS[plano];
+  console.log('Price ID mapeado:', priceId);
+  
   if (!priceId || priceId.includes('SEU_ID')) {
+    console.log('ERRO: Price ID inválido ou não configurado');
     throw new Error(`Plano '${plano}' inválido ou ID de preço não configurado.`);
   }
   if (!idSalao) {
+    console.log('ERRO: ID do Salão não fornecido');
     throw new Error('ID do Salão é obrigatório para o checkout.');
   }
 
   try {
     // A URL da sua Cloud Function que está no ar.
-    const functionUrl = 'https://createstripecheckout-h36yffqwbq-uc.a.run.app';
+    const functionUrl = 'https://us-central1-bloom-agendamento.cloudfunctions.net/createStripeCheckout';
     
     // URLs de retorno corretas para o app
-    const successUrl = 'aura://checkout/sucesso?session_id={CHECKOUT_SESSION_ID}';
-    const cancelUrl = 'aura://checkout/cancelado';
+    const successUrl = 'meuapp://checkout/sucesso?session_id={CHECKOUT_SESSION_ID}';
+    const cancelUrl = 'meuapp://checkout/cancelado';
 
-    console.log('Enviando dados para backend:', { priceId, idSalao });
+    const requestBody = {
+      priceId: priceId,
+      idSalao: idSalao,
+      successUrl: successUrl,
+      cancelUrl: cancelUrl,
+    };
+    
+    console.log('Enviando dados para backend:', requestBody);
+    console.log('URL da função:', functionUrl);
     
     const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        priceId: priceId,
-        idSalao: idSalao,
-        successUrl: successUrl,
-        cancelUrl: cancelUrl,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
-    const data = await response.json();
+    console.log('Status da resposta:', response.status);
+    console.log('Headers da resposta:', response.headers);
     
+    const data = await response.json();
     console.log('Resposta do backend:', data);
 
     if (!response.ok) {
+      console.log('ERRO: Resposta não OK do backend');
       throw new Error(data.message || 'Erro do servidor ao criar a sessão.');
     }
 
+    console.log('Sessão criada com sucesso:', data);
     // Retorna os dados para a sua tela de checkout usar.
     return data; // Deve conter { sessionId: '...', url: '...' }
 

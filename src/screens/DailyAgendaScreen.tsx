@@ -167,7 +167,7 @@ const DailyAgendaScreen: React.FC = () => {
   // Buscar horário de funcionamento ao carregar agenda
   useEffect(() => {
     if (!user?.idSalao) return setLoadingHorario(false);
-    const ref = doc(db, 'configuracoes', `horario_funcionamento_${user.idSalao}`);
+          const ref = doc(db, 'saloes', user.idSalao, 'configuracoes', 'horarios');
     const unsubscribe = onSnapshot(ref, (snap) => {
       if (snap.exists()) {
         const data = snap.data();

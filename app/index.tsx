@@ -11,7 +11,19 @@ export default function Index() {
   console.log('Index - Componente montado', { user, salaoInfo, isLoading, isSalaoLoading });
 
   useEffect(() => {
-    console.log('Index - useEffect executado', { user, salaoInfo, isLoading, isSalaoLoading });
+    console.log('Index - useEffect executado', { 
+      user: user ? { id: user.id, idSalao: user.idSalao } : null, 
+      salaoInfo, 
+      isLoading, 
+      isSalaoLoading 
+    });
+    console.log('Index - Dependências do useEffect:', { 
+      userExists: !!user, 
+      user_idSalao: user?.idSalao,
+      salaoInfoExists: !!salaoInfo,
+      isLoading,
+      isSalaoLoading
+    });
     
     // Aguarda um pouco para garantir que o layout está montado
     const timer = setTimeout(() => {
@@ -62,7 +74,7 @@ export default function Index() {
     }, 1000); // Aumentado para 1 segundo
 
     return () => clearTimeout(timer);
-  }, [user, salaoInfo, isLoading, isSalaoLoading, router]);
+  }, [user, user?.idSalao, salaoInfo, isLoading, isSalaoLoading, router]);
 
   // Retorna null para não mostrar nada durante o redirecionamento
   return null;

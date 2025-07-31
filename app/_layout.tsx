@@ -1,287 +1,198 @@
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import * as Notifications from 'expo-notifications';
-import { Stack, useRouter } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import * as SystemUI from 'expo-system-ui';
-import React, { useEffect, useRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, AppState, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { NotificationToast } from '../components/NotificationToast';
-import { NotificationsProvider, useNotifications } from '../contexts/NotificationsContext';
+
+import EmailVerificationBanner from '../components/EmailVerificationBanner';
 import { useAuthListener, useAuthStore } from '../contexts/useAuthStore';
-import { registerForPushNotificationsAsync, savePushTokenToFirestore } from '../services/pushNotifications';
-import { initializeStripe } from '../services/stripe';
+import { useSalaoInfo } from '../hooks/useSalaoInfo';
+// Adicione outros providers que você usa, como o de Notificações
+// import { NotificationsProvider, NotificationsRoot } from '../contexts/NotificationsContext';
 
-SplashScreen.preventAutoHideAsync();
-SplashScreen.hideAsync();
+// Função wrapper para os Providers
+function AppProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <BottomSheetModalProvider>
+        {children}
+      </BottomSheetModalProvider>
+    </GestureHandlerRootView>
+  );
+}
 
-// Inicializar Stripe
-initializeStripe();
-
-function NotificationsRoot({ children }: { children: React.ReactNode }) {
-  const { addNotification } = useNotifications();
+function RootLayoutNav() {
+  const { user, isLoading, refreshUser } = useAuthStore();
+  const { salaoInfo, loading: isSalaoLoading } = useSalaoInfo();
+  const segments = useSegments();
   const router = useRouter();
-  const notificationListener = useRef<any>(null);
-  const responseListener = useRef<any>(null);
-  const { user } = useAuthStore();
-  const isMounted = useRef(false);
-  const notificationSetupDone = useRef(false);
-  const lastUserId = useRef<string | null>(null);
+  const [showEmailBanner, setShowEmailBanner] = useState(false);
 
+  // Listener para quando o app voltar do background
   useEffect(() => {
-    // Aguarda um pouco para garantir que o layout está montado
-    const timer = setTimeout(() => {
-      isMounted.current = true;
-      console.log('NotificationsRoot mounted');
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    // Evitar configuração múltipla de notificações para o mesmo usuário
-    if (notificationSetupDone.current && lastUserId.current === user?.id) return;
-    
-    if (user && user.id) {
-      notificationSetupDone.current = true;
-      lastUserId.current = user.id;
-      (async () => {
-        const token = await registerForPushNotificationsAsync();
-        if (token) await savePushTokenToFirestore(user.id, token);
-      })();
-    }
-    
-    notificationListener.current = Notifications.addNotificationReceivedListener((notification: any) => {
-      addNotification({
-        tipo: 'push',
-        titulo: notification.request.content.title || '',
-        mensagem: notification.request.content.body || '',
-      });
-    });
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response: any) => {
-      const tela = response.notification.request.content.data?.tela;
-      if (tela && isMounted.current) {
-        // Usar setTimeout para evitar navegação durante montagem
-        setTimeout(() => {
-          try {
-            console.log('Tentando navegar para:', tela);
-            if (tela === 'agenda') (router as any).replace('/(tabs)/agenda');
-            if (tela === 'produtos') (router as any).replace('/(tabs)/produtos');
-          } catch (error) {
-            console.log('Erro na navegação por notificação:', error);
-          }
-        }, 200);
-      } else {
-        console.log('Navegação por notificação ignorada - não montado ou sem tela');
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active' && user && !user.emailVerified) {
+        console.log('App voltou do background, verificando status do e-mail...');
+        refreshUser();
       }
-    });
-    return () => {
-      if (notificationListener.current) Notifications.removeNotificationSubscription(notificationListener.current);
-      if (responseListener.current) Notifications.removeNotificationSubscription(responseListener.current);
     };
-  }, [user]);
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, [user, refreshUser]);
+
+  useEffect(() => {
+    console.log("=== ROTEAMENTO CENTRALIZADO INICIOU ===");
+    console.log("Estado atual:", { 
+      user: user ? 'logado' : 'não logado', 
+      emailVerified: user?.emailVerified,
+      idSalao: user?.idSalao,
+      salaoInfo: salaoInfo ? 'carregado' : 'não carregado',
+      plano: salaoInfo?.plano,
+      statusAssinatura: salaoInfo?.statusAssinatura,
+      isLoading, 
+      isSalaoLoading 
+    });
+
+    // Guarda de segurança: não faz nada enquanto os dados essenciais estão carregando.
+    if (isLoading || isSalaoLoading) {
+      console.log("Aguardando carregamento de dados...", { isLoading, isSalaoLoading });
+      return;
+    }
+
+    // ================================================================
+    // LÓGICA DE ROTEAMENTO CENTRALIZADA - FLUXO CORRIGIDO
+    // ================================================================
+
+    // 1. Se NÃO há usuário, o destino é sempre a tela de login.
+    if (!user) {
+      if (!segments.some(segment => segment === 'login' as any)) {
+        console.log("Usuário não logado, redirecionando para /login");
+        router.replace('/login');
+      }
+      return;
+    }
+
+    // A partir daqui, o 'user' existe.
+
+    // 2. VERIFICAÇÃO DE E-MAIL - FLUXO CORRIGIDO PARA USUÁRIOS ANTIGOS
+    // Só exige verificação de e-mail se o usuário não tem salão (novo usuário)
+    if (!user.emailVerified && !user.idSalao) {
+      console.log("Novo usuário com e-mail não verificado, redirecionando para /login");
+      router.replace('/login');
+      return;
+    }
+
+    // Se o usuário tem e-mail não verificado mas já tem salão (usuário antigo),
+    // permite o acesso mas mostra um aviso discreto
+    if (!user.emailVerified && user.idSalao) {
+      console.log("Usuário antigo com e-mail não verificado, permitindo acesso");
+      setShowEmailBanner(true);
+    } else {
+      setShowEmailBanner(false);
+    }
+
+    // A partir daqui, o usuário pode acessar o app (novo ou antigo).
+
+    // 3. Se o usuário NÃO tem salão, o destino é o cadastro de salão.
+    if (!user.idSalao) {
+      if (!segments.some(segment => segment === 'cadastro-salao' as any)) {
+        console.log("Usuário sem salão, redirecionando para /cadastro-salao");
+        router.replace('/cadastro-salao');
+      }
+      return;
+    }
+
+    // A partir daqui, 'user.idSalao' existe.
+
+    // 4. Se o salão NÃO tem uma assinatura ativa, o destino é a seleção de plano.
+    if (!salaoInfo?.plano || salaoInfo?.statusAssinatura !== 'ativa') {
+      // Se ele já não estiver em alguma parte do fluxo de pagamento, mande-o para lá.
+      const inOnboardingFlow = segments.some(segment => 
+        segment === 'selecao-plano' || 
+        segment === '(checkout)' || 
+        segment === 'aguardando-confirmacao' ||
+        segment === 'stripe-checkout' as any
+      );
+      
+      if (!inOnboardingFlow) {
+        console.log("Salão sem assinatura ativa, redirecionando para /selecao-plano");
+        router.replace('/selecao-plano');
+      }
+      return;
+    }
+
+    // 5. Se o usuário está 100% autorizado e AINDA está em uma tela de onboarding,
+    //    significa que ele acabou de completar o fluxo. Mande-o para o app.
+    const inOnboardingFlow = segments.some(segment => 
+      segment === 'cadastro-salao' || 
+      segment === 'selecao-plano' || 
+      segment === '(checkout)' || 
+      segment === 'aguardando-confirmacao' ||
+      segment === 'stripe-checkout' as any
+    );
+    
+    if (inOnboardingFlow) {
+      console.log("Usuário 100% autorizado, saindo do fluxo de onboarding para a agenda.");
+      router.replace('/(tabs)/agenda');
+    }
+
+    // Se nenhuma das condições acima for atendida, o roteador não faz NADA,
+    // permitindo que o usuário navegue livremente entre as telas internas.
+
+  }, [user, user?.emailVerified, user?.idSalao, salaoInfo, isLoading, isSalaoLoading, segments, router]);
+  
+  // Enquanto carrega, mostra uma tela de loading para evitar "flashes" de conteúdo
+  if (isLoading || isSalaoLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <>
-      <NotificationToast />
-      {children}
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="cadastro-salao" />
+        <Stack.Screen name="selecao-plano" />
+        <Stack.Screen name="(checkout)" />
+        <Stack.Screen name="aguardando-confirmacao" />
+        <Stack.Screen name="stripe-checkout" />
+        <Stack.Screen name="boas-vindas" />
+        <Stack.Screen name="salao" />
+        <Stack.Screen name="clientes" />
+        <Stack.Screen name="servicos" />
+        <Stack.Screen name="produtos" />
+        <Stack.Screen name="mensagens" />
+        <Stack.Screen name="equipe" />
+        <Stack.Screen name="equipe-editar" />
+        <Stack.Screen name="pagamentos" />
+        <Stack.Screen name="gerenciar-assinatura" />
+        <Stack.Screen name="historico-receitas" />
+        <Stack.Screen name="horariofuncionamento" />
+        <Stack.Screen name="ContaScreen" />
+        <Stack.Screen name="HorarioFuncionamentoScreen" />
+      </Stack>
+      
+      <EmailVerificationBanner 
+        visible={showEmailBanner} 
+        onDismiss={() => setShowEmailBanner(false)} 
+      />
     </>
   );
 }
 
 export default function RootLayout() {
+  // Hooks que monitoram o estado devem ficar aqui fora
   useAuthListener();
-  const { user, isLoading } = useAuthStore();
-
-  useEffect(() => {
-    console.log('RootLayout - Usuário atual:', user);
-  }, [user]);
-
-  useEffect(() => {
-    // Forçar barra de navegação preta no Android (ícones ficam brancos automaticamente)
-    SystemUI.setBackgroundColorAsync('#000000');
-  }, []);
-
-  // Tratamento global de erros do Firestore
-  useEffect(() => {
-    const originalConsoleWarn = console.warn;
-    console.warn = (...args) => {
-      // Filtrar warnings específicos do Firestore
-      const message = args.join(' ');
-      if (message.includes('WebChannelConnection') || message.includes('transport errored')) {
-        // Log silencioso para esses warnings específicos
-        console.log('Firestore connection warning (normal):', message);
-      } else {
-        originalConsoleWarn(...args);
-      }
-    };
-
-    return () => {
-      console.warn = originalConsoleWarn;
-    };
-  }, []);
-
-  // Mostra loading enquanto verifica o estado de autenticação
-  if (isLoading) {
-    console.log('RootLayout - Mostrando loading');
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
-
-  console.log('RootLayout - Renderizando Stack Navigator');
+  
   return (
-    <NotificationsProvider>
-      <NotificationsRoot>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <BottomSheetModalProvider>
-            <Stack 
-              screenOptions={{
-                headerShown: false,
-                headerTitleAlign: 'left',
-                headerStyle: {
-                  backgroundColor: '#fff',
-                },
-                headerTitleStyle: {
-                  fontSize: 18,
-                  fontWeight: '600',
-                },
-              }}>
-              
-              {/* Index - rota principal para redirecionamento */}
-              <Stack.Screen
-                name="index"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              
-              {/* Tela de login - sempre disponível */}
-              <Stack.Screen
-                name="login"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              
-              {/* Tela de cadastro de salão */}
-              <Stack.Screen
-                name="cadastro-salao"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              
-              {/* Tela de boas-vindas */}
-              <Stack.Screen
-                name="boas-vindas"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              
-              {/* Tabs principais */}
-              <Stack.Screen
-                name="(tabs)"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              
-              {/* Telas de cadastro */}
-              <Stack.Screen
-                name="clientes"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="servicos"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="produtos"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              
-              {/* Telas com header oculto */}
-              <Stack.Screen
-                name="historico-receitas"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="horariofuncionamento"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="mensagens"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="equipe-editar"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="pagamentos"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="stripe-checkout"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="gerenciar-assinatura"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="equipe"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="HorarioFuncionamentoScreen"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="ContaScreen"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="selecao-plano"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              {/* Todas as telas agora não terão header padrão do expo-router */}
-            </Stack>
-          </BottomSheetModalProvider>
-        </GestureHandlerRootView>
-      </NotificationsRoot>
-    </NotificationsProvider>
+    <AppProviders>
+      <RootLayoutNav />
+    </AppProviders>
   );
 }

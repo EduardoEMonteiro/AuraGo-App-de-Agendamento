@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "Aura",
+    "displayName": "Aura",
     "slug": "aura",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,7 +11,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "scheme": "aura",
+    "scheme": "meuapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

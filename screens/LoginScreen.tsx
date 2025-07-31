@@ -1,7 +1,7 @@
 import * as AuthSession from 'expo-auth-session';
 import { useRouter } from 'expo-router';
 import type { Auth } from 'firebase/auth';
-import { createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -278,6 +278,80 @@ export default function LoginScreen() {
     try {
       const res = await signInWithEmailAndPassword(auth as Auth, email, password);
       console.log('Login Firebase Auth:', res.user.uid);
+      
+      // VERIFICAÇÃO DE E-MAIL - FLUXO CORRIGIDO
+      if (!res.user.emailVerified) {
+        // Buscar dados do usuário para verificar se é novo ou antigo
+        const userDoc = await getDoc(doc(db, 'usuarios', res.user.uid));
+        const userData = userDoc.exists() ? userDoc.data() : {};
+        
+        if (!userData.idSalao) {
+          // NOVO USUÁRIO - Exige verificação
+          Alert.alert(
+            "E-mail Não Verificado",
+            "Por favor, verifique seu e-mail antes de fazer login. Enviamos um link de confirmação para sua caixa de entrada.",
+            [
+              {
+                text: "Reenviar E-mail",
+                onPress: async () => {
+                  try {
+                    await sendEmailVerification(res.user);
+                    Alert.alert(
+                      "E-mail Reenviado",
+                      "Enviamos um novo link de verificação para seu e-mail. Verifique sua caixa de entrada."
+                    );
+                  } catch (error) {
+                    Alert.alert("Erro", "Não foi possível reenviar o e-mail. Tente novamente.");
+                  }
+                },
+              },
+              {
+                text: "OK",
+                onPress: async () => {
+                  try {
+                    await signOut(auth);
+                    console.log('Usuário deslogado por e-mail não verificado.');
+                  } catch (signOutError) {
+                    console.error("Erro ao deslogar:", signOutError);
+                  }
+                },
+              },
+            ]
+          );
+        } else {
+          // USUÁRIO ANTIGO - Permite acesso mas avisa
+          Alert.alert(
+            "E-mail Não Verificado",
+            "Seu e-mail ainda não foi verificado. Para sua segurança, recomendamos verificar seu e-mail.",
+            [
+              {
+                text: "Reenviar E-mail",
+                onPress: async () => {
+                  try {
+                    await sendEmailVerification(res.user);
+                    Alert.alert(
+                      "E-mail Reenviado",
+                      "Enviamos um novo link de verificação para seu e-mail."
+                    );
+                  } catch (error) {
+                    Alert.alert("Erro", "Não foi possível reenviar o e-mail. Tente novamente.");
+                  }
+                },
+              },
+              {
+                text: "Continuar",
+                onPress: () => {
+                  // Permite acesso ao app mesmo sem e-mail verificado
+                  setUser({ ...res.user, ...userData, id: res.user.uid });
+                },
+              },
+            ]
+          );
+        }
+        setLoading(false);
+        return;
+      }
+      
       const userDoc = await getDoc(doc(db, 'usuarios', res.user.uid));
       if (!userDoc.exists()) {
         Alert.alert('Erro', 'Usuário não encontrado no Firestore.');
@@ -286,8 +360,7 @@ export default function LoginScreen() {
       }
       setUser({ ...res.user, ...userDoc.data(), id: res.user.uid });
       
-      // Redirecionar para index após login bem-sucedido
-      router.replace('/');
+      // REMOVIDO: Navegação imperativa. O RootLayout cuidará do roteamento.
     } catch (e: any) {
       console.error('Erro no login:', e);
       Alert.alert('Erro', e.message || JSON.stringify(e));
@@ -307,33 +380,61 @@ export default function LoginScreen() {
       setRegisterError('As senhas não coincidem.');
       return;
     }
+    
     setLoading(true);
     try {
-      const res = await createUserWithEmailAndPassword(auth as Auth, email, password);
-      console.log('Usuário criado no Auth:', res.user.uid);
-      // Cadastro padrão: sempre criar como gerente
-      const role = 'gerente';
-      console.log('Cadastro: role atribuído:', role);
-      // Cria documento do usuário no Firestore
-      await setDoc(doc(db, 'usuarios', res.user.uid), {
-        email: res.user.email,
+      // 1. Cria o usuário
+      const userCredential = await createUserWithEmailAndPassword(auth as Auth, email, password);
+      const user = userCredential.user;
+      console.log('Usuário criado no Auth:', user.uid);
+
+      // 2. Envia o e-mail de verificação
+      await sendEmailVerification(user);
+      console.log('E-mail de verificação enviado');
+
+      // 3. Salva os dados no Firestore
+      await setDoc(doc(db, 'usuarios', user.uid), {
+        id: user.uid,
+        email: user.email,
         nome: firstName,
         sobrenome: lastName,
-        role,
+        role: 'gerente',
         idSalao: null,
       });
-      // Busca o usuário atualizado do Firestore
-      const userDoc = await getDoc(doc(db, 'usuarios', res.user.uid));
-      if (!userDoc.exists()) {
-        setRegisterError('Usuário não criado no Firestore.');
-        setLoading(false);
-        return;
-      }
-      setUser({ ...res.user, ...userDoc.data(), id: res.user.uid });
-      Alert.alert('Sucesso', `Usuário criado como ${role}!`);
-    } catch (e: any) {
-      console.error('Erro no cadastro:', e);
-      setRegisterError(e.message || JSON.stringify(e));
+      console.log('Documento do usuário salvo no Firestore');
+      
+      // 4. MOSTRA O ALERTA PRIMEIRO - Passo CRÍTICO
+      Alert.alert(
+        "Cadastro Realizado com Sucesso!",
+        "Enviamos um link de confirmação para o seu e-mail. Por favor, verifique sua caixa de entrada para ativar sua conta e depois retorne para fazer o login.",
+        [
+          {
+            text: "OK",
+            onPress: async () => {
+              // 5. DENTRO DO 'OK' DO ALERTA, deslogue o usuário
+              try {
+                await signOut(auth);
+                console.log('Usuário deslogado para aguardar verificação.');
+                
+                // Limpa os campos e volta para o modo de login
+                setMode('login');
+                setFirstName('');
+                setLastName('');
+                setEmail('');
+                setPassword('');
+                setConfirmPassword('');
+                
+              } catch (signOutError) {
+                console.error("Erro ao deslogar após cadastro:", signOutError);
+              }
+            },
+          },
+        ]
+      );
+
+    } catch (error: any) {
+      console.error("Erro no cadastro:", error);
+      setRegisterError(error.message || JSON.stringify(error));
     } finally {
       setLoading(false);
     }

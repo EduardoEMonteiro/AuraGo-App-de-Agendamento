@@ -486,7 +486,7 @@ function HorarioFuncionamentoModal({ user, onClose }: { user: any, onClose: () =
     useEffect(() => {
         async function fetchHorario() {
             if (!user?.idSalao) return setLoading(false);
-            const ref = doc(db, 'configuracoes', `horario_funcionamento_${user.idSalao}`);
+            const ref = doc(db, 'saloes', user.idSalao, 'configuracoes', 'horarios');
             const snap = await getDoc(ref);
             if (snap.exists()) {
                 const data = snap.data();
@@ -514,7 +514,7 @@ function HorarioFuncionamentoModal({ user, onClose }: { user: any, onClose: () =
     async function handleSalvar() {
         if (!user?.idSalao) return;
         setSalvando(true);
-        const ref = doc(db, 'configuracoes', `horario_funcionamento_${user.idSalao}`);
+        const ref = doc(db, 'saloes', user.idSalao, 'configuracoes', 'horarios');
         await setDoc(ref, { dias });
         setSalvando(false);
         Alert.alert('Sucesso', 'Horário de funcionamento salvo!');

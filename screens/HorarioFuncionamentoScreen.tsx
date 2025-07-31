@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../contexts/useAuthStore';
+import { useSalaoInfo } from '../hooks/useSalaoInfo';
 import { db } from '../services/firebase';
 
 const DIAS_SEMANA = [
@@ -34,6 +35,7 @@ export const screenOptions = {
 export default function HorarioFuncionamentoScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { loadSalaoInfo } = useSalaoInfo();
   const insets = useSafeAreaInsets();
   const [dias, setDias] = useState(() =>
     DIAS_SEMANA.map((d, i) => ({
@@ -52,7 +54,9 @@ export default function HorarioFuncionamentoScreen() {
   useEffect(() => {
     async function fetchHorario() {
       if (!user?.idSalao) return setLoading(false);
-      const ref = doc(db, 'configuracoes', `horario_funcionamento_${user.idSalao}`);
+      
+      // CORREÇÃO: Usar o mesmo caminho onde os dados são salvos
+      const ref = doc(db, 'saloes', user.idSalao, 'configuracoes', 'horarios');
       const snap = await getDoc(ref);
       if (snap.exists()) {
         const data = snap.data();
@@ -102,13 +106,21 @@ export default function HorarioFuncionamentoScreen() {
       Alert.alert('Erro', 'Salão não identificado.');
       return;
     }
+    
+    setSalvando(true);
     try {
       const horariosRef = doc(db, 'saloes', user.idSalao, 'configuracoes', 'horarios');
       await setDoc(horariosRef, { dias });
+      
+      // Recarrega os dados do salão no estado global após salvar com sucesso
+      await loadSalaoInfo();
+      
       Alert.alert('Sucesso', 'Horários salvos com sucesso!');
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível salvar os horários.');
       console.log('ERRO AO SALVAR HORÁRIOS:', error);
+    } finally {
+      setSalvando(false);
     }
   }
 

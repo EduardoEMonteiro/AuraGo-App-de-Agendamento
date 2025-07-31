@@ -1,5 +1,5 @@
-import { useLocalSearchParams } from 'expo-router';
-import { addDoc, collection, doc, getDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { addDoc, collection, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Formik } from 'formik';
 import React, { useEffect, useState } from 'react';
 import {
@@ -63,11 +63,12 @@ const FormField = ({ label, error, touched, children }) => (
 );
 
 export default function CadastroSalaoScreen() {
-  const { user, setUser } = useAuthStore();
+  const { user, setUser, updateUser } = useAuthStore();
+  const router = useRouter();
   const params = useLocalSearchParams();
   const planoEscolhido = params.plano as 'essencial' | 'pro';
 
-  // --- FUNÇÃO DE SALVAR (INALTERADA) ---
+  // --- FUNÇÃO DE SALVAR (CORRIGIDA) ---
   async function salvarSalao(values: any, { setSubmitting }: any) {
     try {
       const salaoRef = await addDoc(collection(db, 'saloes'), {
@@ -109,10 +110,17 @@ export default function CadastroSalaoScreen() {
       const userId = user?.id || user?.uid;
       if (userId) {
         await updateDoc(doc(db, 'usuarios', userId), { idSalao: salaoRef.id });
-        const userDoc = await getDoc(doc(db, 'usuarios', userId));
-        setUser({ ...user, ...userDoc.data(), id: userId });
+        console.log('Usuário atualizado no Firestore com idSalao:', salaoRef.id);
+        
+        // --- LINHA CRÍTICA DA CORREÇÃO ---
+        // Força a atualização do estado local no Zustand
+        updateUser({ idSalao: salaoRef.id });
+        console.log('Estado do usuário atualizado no Zustand com idSalao:', salaoRef.id);
+        
+        // REMOVIDO: Navegação imperativa. O RootLayout cuidará do roteamento.
+        console.log('Salão cadastrado com sucesso. RootLayout redirecionará automaticamente para seleção de planos.');
       }
-      Alert.alert('Sucesso', 'Salão cadastrado com sucesso!');
+      Alert.alert('Sucesso', 'Salão cadastrado com sucesso! Redirecionando para seleção de planos...');
     } catch (e: any) {
       Alert.alert('Erro', e.message);
     } finally {

@@ -31,7 +31,13 @@ export default function SelecaoPlanoScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleAssinar = async () => {
+    console.log('=== DEBUG CHECKOUT STRIPE ===');
+    console.log('Usuário:', user?.id);
+    console.log('idSalao:', user?.idSalao);
+    console.log('Plano selecionado:', PLANO_AURA.id);
+    
     if (!user || !user.idSalao) {
+      console.log('ERRO: Usuário ou idSalao não encontrado');
       Alert.alert(
         'Erro de Autenticação',
         'Não foi possível encontrar os dados do seu negócio. Por favor, faça login novamente.'
@@ -41,22 +47,36 @@ export default function SelecaoPlanoScreen() {
 
     setLoading(true);
     try {
+      console.log('Chamando createRealCheckoutSession com:', {
+        plano: PLANO_AURA.id,
+        idSalao: user.idSalao
+      });
+      
       const sessionData = await createRealCheckoutSession(PLANO_AURA.id as 'essencial', user.idSalao);
       
+      console.log('Resposta do createRealCheckoutSession:', sessionData);
+      
       if (sessionData && sessionData.url) {
-        console.log('SelecaoPlanoScreen - URL de checkout recebida. Navegando...');
+        console.log('SelecaoPlanoScreen - URL de checkout recebida:', sessionData.url);
+        console.log('Navegando para stripe-checkout...');
         
-        // Navegação direta e segura
+        // Navegação direta para checkout (mantida pois é parte do fluxo de pagamento)
         router.push({
           pathname: '/stripe-checkout',
           params: { checkoutUrl: sessionData.url }
         });
 
       } else {
+        console.log('ERRO: Resposta não contém URL válida');
         throw new Error('A resposta do servidor não continha uma URL de checkout.');
       }
     } catch (error: any) {
       console.error('SelecaoPlanoScreen - Erro na assinatura:', error);
+      console.error('Detalhes do erro:', {
+        message: error.message,
+        stack: error.stack,
+        response: error.response
+      });
       Alert.alert('Erro na Assinatura', error.message || 'Não foi possível processar sua assinatura. Tente novamente.');
     } finally {
       setLoading(false);

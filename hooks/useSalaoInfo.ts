@@ -48,6 +48,7 @@ export function useSalaoInfo() {
     if (!user?.idSalao) {
       console.log('SalaoInfo - Usuário sem idSalao, finalizando');
       setLoading(false);
+      setSalaoInfo(null);
       return;
     }
 
@@ -55,28 +56,32 @@ export function useSalaoInfo() {
       const salaoDoc = await getDoc(doc(db, 'saloes', user.idSalao));
       if (salaoDoc.exists()) {
         const data = { id: salaoDoc.id, ...salaoDoc.data() } as SalaoInfo;
+        console.log('SalaoInfo - Dados do salão carregados:', data);
         setSalaoInfo(data);
         
         // Se o salão não tem plano, pode estar aguardando webhook
         // Recarregar a cada 3 segundos para verificar se foi atualizado
-        if (!data.plano) {
-          console.log('SalaoInfo - Salão sem plano, agendando recarregamento');
+        if (!data.plano || data.statusAssinatura !== 'ativa') {
+          console.log('SalaoInfo - Salão sem plano ativo, agendando recarregamento');
           setTimeout(loadSalaoInfo, 3000);
         } else {
-          console.log('SalaoInfo - Salão com plano:', data.plano);
+          console.log('SalaoInfo - Salão com plano ativo:', data.plano, data.statusAssinatura);
         }
       } else {
         setError('Salão não encontrado');
+        setSalaoInfo(null);
       }
     } catch (err) {
       setError('Erro ao carregar informações do salão');
       console.error('Erro ao carregar salão:', err);
+      setSalaoInfo(null);
     } finally {
       setLoading(false);
     }
   }, [user?.idSalao]);
 
   useEffect(() => {
+    console.log('SalaoInfo - useEffect disparado, user.idSalao:', user?.idSalao);
     loadSalaoInfo();
   }, [loadSalaoInfo]);
 

@@ -31,13 +31,9 @@ export default function StripeCheckoutScreen() {
   };
 
   const handleSuccess = () => {
-    Alert.alert(
-      'Pagamento Concluído!', 
-      'Seu plano foi ativado com sucesso. Você será redirecionado.'
-    );
-    // Apenas navega de volta para o app. O hook de proteção de rotas garantirá
-    // que o usuário veja a tela correta agora que tem um plano.
-    router.replace('/(tabs)/agenda');
+    console.log('Pagamento concluído! Redirecionando para tela de aguardando confirmação...');
+    // Redireciona para a tela de aguardando confirmação em vez de ir direto para o app
+    router.replace('aguardando-confirmacao' as any);
   };
 
   const handleCancel = () => {
