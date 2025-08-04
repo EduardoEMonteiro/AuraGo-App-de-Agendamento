@@ -13,17 +13,7 @@ export interface PlanoLimitations {
 
 export const PLANO_LIMITATIONS: Record<string, PlanoLimitations> = {
   essencial: {
-    maxProfissionais: 3,
-    maxClientes: -1, // Ilimitado
-    maxServicos: -1, // Ilimitado
-    maxProdutos: -1, // Ilimitado
-    relatoriosAvancados: false,
-    integracaoWhatsapp: false,
-    backupAutomatico: false,
-    agendamentoAvancado: false,
-  },
-  pro: {
-    maxProfissionais: -1, // Ilimitado
+    maxProfissionais: 1, // Apenas 1 profissional
     maxClientes: -1, // Ilimitado
     maxServicos: -1, // Ilimitado
     maxProdutos: -1, // Ilimitado
@@ -106,7 +96,7 @@ export function getLimitMessage(planoSalao: string, tipo: 'profissionais' | 'cli
   
   switch (tipo) {
     case 'profissionais':
-      return `Limite de ${limitations.maxProfissionais} profissionais atingido. Faça upgrade para o Plano Pro para profissionais ilimitados.`;
+      return `Limite de ${limitations.maxProfissionais} profissional atingido.`;
     case 'clientes':
       return `Sem limite de clientes.`;
     case 'servicos':
@@ -114,7 +104,7 @@ export function getLimitMessage(planoSalao: string, tipo: 'profissionais' | 'cli
     case 'produtos':
       return `Sem limite de produtos.`;
     default:
-      return 'Limite atingido. Faça upgrade para o Plano Pro.';
+      return 'Limite atingido.';
   }
 }
 
@@ -126,19 +116,13 @@ export function getPlanoInfo(planoSalao: string): { nome: string; descricao: str
     case 'essencial':
       return {
         nome: 'Plano Essencial',
-        descricao: 'Ideal para salões pequenos',
+        descricao: 'Ideal para profissionais autônomos',
         preco: 'R$ 19,90/mês'
-      };
-    case 'pro':
-      return {
-        nome: 'Plano Pro',
-        descricao: 'Para salões em crescimento',
-        preco: 'R$ 59,90/mês'
       };
     default:
       return {
         nome: 'Plano Essencial',
-        descricao: 'Ideal para salões pequenos',
+        descricao: 'Ideal para profissionais autônomos',
         preco: 'R$ 19,90/mês'
       };
   }

@@ -12,18 +12,21 @@ type CustomHeaderProps = {
 
 export const CustomHeader = ({ title, showBackButton = true }: CustomHeaderProps) => {
   // --- LÓGICA DE NAVEGAÇÃO DEFENSIVA ---
-  let router: any;
-  let navigation: any;
+  let router: any = null;
+  let navigation: any = null;
   let canGoBack = false;
 
   try {
     router = useRouter();
+  } catch (e) {
+    // Router não disponível
+  }
+
+  try {
     navigation = useNavigation();
     canGoBack = navigation.canGoBack();
   } catch (e) {
-    // Hooks falham em contextos sem um navegador pai (como testes ou erros de setup).
-    // Tratamos isso de forma segura, assumindo que não há para onde voltar.
-    console.log('CustomHeader: Navigation context not found. Hiding back button.');
+    // Navigation não disponível - não logamos para evitar spam
   }
   // --- FIM DA LÓGICA DEFENSIVA ---
 
@@ -37,13 +40,13 @@ export const CustomHeader = ({ title, showBackButton = true }: CustomHeaderProps
         router.back();
       }
     } catch (error) {
-      console.log('CustomHeader: Error during back navigation:', error);
+      // Silenciosamente ignora erros de navegação
     }
   }, [router, canGoBack]);
 
   return (
     <View style={styles.header}>
-      {showBackButton ? (
+      {showBackButton && router ? (
         <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
           <Feather name="arrow-left" size={hp('3%')} color="#666666" />
         </TouchableOpacity>

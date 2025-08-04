@@ -567,6 +567,72 @@ const DailyAgendaScreen: React.FC = () => {
     }
   };
 
+  // Função para adicionar novo cliente
+  const handleAddNewClient = async (newClient: any) => {
+    try {
+      if (!user?.idSalao) {
+        console.error('❌ idSalao não encontrado');
+        return;
+      }
+
+      const clientesRef = collection(db, 'saloes', user.idSalao, 'clientes');
+      const docRef = await addDoc(clientesRef, {
+        nome: newClient.name,
+        telefone: newClient.telefone || '',
+        email: newClient.email || '',
+        observacoes: newClient.observacoes || '',
+        criadoEm: new Date(),
+        criadoPor: user.email || user.uid,
+      });
+
+      console.log('✅ Cliente adicionado com sucesso!');
+      
+      // Atualizar a lista de clientes localmente
+      const newClientWithId = {
+        id: docRef.id,
+        name: newClient.name,
+        telefone: newClient.telefone,
+        email: newClient.email,
+        observacoes: newClient.observacoes
+      };
+      
+      // A lista será atualizada automaticamente pelo useEffect que escuta mudanças no Firestore
+      
+    } catch (error: any) {
+      console.error('❌ Erro ao adicionar cliente:', error);
+      alert('Erro ao adicionar cliente: ' + (error.message || error));
+    }
+  };
+
+  // Função para adicionar novo serviço
+  const handleAddNewService = async (newService: any) => {
+    try {
+      if (!user?.idSalao) {
+        console.error('❌ idSalao não encontrado');
+        return;
+      }
+
+      const servicosRef = collection(db, 'saloes', user.idSalao, 'servicos');
+      const docRef = await addDoc(servicosRef, {
+        nome: newService.name,
+        valor: newService.valor,
+        duracao: newService.duracao || 60,
+        cor: newService.cor || '#1976d2',
+        ativo: true,
+        criadoEm: new Date(),
+        criadoPor: user.email || user.uid,
+      });
+
+      console.log('✅ Serviço adicionado com sucesso!');
+      
+      // A lista será atualizada automaticamente pelo useEffect que escuta mudanças no Firestore
+      
+    } catch (error: any) {
+      console.error('❌ Erro ao adicionar serviço:', error);
+      alert('Erro ao adicionar serviço: ' + (error.message || error));
+    }
+  };
+
   const handleSaveBlock = async (blockData: any) => {
     try {
       // Garante o formato correto do campo date
@@ -1069,6 +1135,8 @@ const DailyAgendaScreen: React.FC = () => {
             clients={clients}
             services={services}
             selectedDate={currentDate}
+            onAddNewClient={handleAddNewClient}
+            onAddNewService={handleAddNewService}
           />
           <EditAppointmentModal
             isVisible={editAppointmentModalVisible}
@@ -1077,6 +1145,8 @@ const DailyAgendaScreen: React.FC = () => {
             clients={clients}
             services={services}
             appointment={selectedAppointment}
+            onAddNewClient={handleAddNewClient}
+            onAddNewService={handleAddNewService}
           />
           <ScheduleBlockModal
             isVisible={scheduleBlockModalVisible}
@@ -1321,15 +1391,8 @@ const DailyAgendaScreen: React.FC = () => {
                   produtosVendidos: produtosVendidos || [],
                 });
                 
-                // Lançar receita principal do agendamento
-                const receitasRef = collection(db, 'saloes', user.idSalao, 'receitas');
-                await addDoc(receitasRef, {
-                  nome: `Agendamento: ${checkoutData.clienteNome}`,
-                  valor: finalPrice,
-                  categoria: 'Agendamento',
-                  data: new Date(),
-                  criadoPor: user.id,
-                });
+                // NÃO criar receita extra manualmente - o agendamento com status 'paid' já é contabilizado como receita
+                // Removido: await addDoc(receitasRef, { ... });
                 
                 // Lançar receita/despesa para cada produto vendido
                 if (Array.isArray(produtosVendidos)) {

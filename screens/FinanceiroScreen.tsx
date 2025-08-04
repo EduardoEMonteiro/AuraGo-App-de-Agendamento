@@ -13,8 +13,14 @@ import {
     Switch, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AlertaSaudeFinanceira } from '../components/AlertaSaudeFinanceira';
 import { CustomHeader } from '../components/CustomHeader';
+import { FormasPagamentoCard } from '../components/FormasPagamentoCard';
+import { IndicadoresFinanceirosCard } from '../components/IndicadoresFinanceirosCard';
+import { MetaFaturamentoCard } from '../components/MetaFaturamentoCard';
+import { PendenciasFinanceirasCard } from '../components/PendenciasFinanceirasCard';
 import { useAuthStore } from '../contexts/useAuthStore';
+import { useFinanceiroIndicadores } from '../hooks/useFinanceiroIndicadores';
 import { db } from '../services/firebase';
 
 // --- Constantes ---
@@ -233,7 +239,43 @@ export default function FinanceiroScreen() {
         if (!dataAg) return false;
         return dataAg >= start && dataAg <= end;
       });
-      setReceitasPeriodo(receitasFiltradas);
+      
+      // Remover duplicatas baseado no ID e tipo de receita
+      const receitasUnicas = receitasFiltradas.filter((item, index, self) => {
+        // Para agendamentos, usar ID do agendamento
+        if (item.status) {
+          // É um agendamento
+          return index === self.findIndex(t => t.id === item.id && t.status);
+        } else {
+          // É uma receita extra - verificar se não corresponde a um agendamento
+          const nomeReceita = item.nome || '';
+          const valorReceita = Number(item.valor) || 0;
+          
+          // Verificar se existe um agendamento com mesmo valor e cliente
+          const agendamentoCorrespondente = receitasAgendamentos.find(ag => {
+            const valorAgendamento = Number(ag.finalPrice ?? ag.servicoValor) || 0;
+            const nomeCliente = ag.clienteNome || '';
+            
+            // Se a receita extra tem nome "Agendamento: [cliente]" e mesmo valor, é duplicata
+            if (nomeReceita.startsWith('Agendamento: ') && 
+                valorReceita === valorAgendamento &&
+                nomeReceita.includes(nomeCliente.trim())) {
+              return true;
+            }
+            
+            return false;
+          });
+          
+          // Se encontrou agendamento correspondente, remover a receita extra
+          if (agendamentoCorrespondente) {
+            return false;
+          }
+          
+          return index === self.findIndex(t => t.id === item.id && !t.status);
+        }
+      });
+      
+      setReceitasPeriodo(receitasUnicas);
       // Listener para despesas filtradas
       const despesasRef = collection(db, 'saloes', user.idSalao, 'despesas');
       const qDespesas = query(despesasRef, orderBy('data', 'desc'));
@@ -256,12 +298,6 @@ export default function FinanceiroScreen() {
       return unsubscribe;
     }, [user?.idSalao, period, customStart, customEnd, receitasAgendamentos, receitasExtras]);
 
-    useEffect(() => {
-        const despesa = lancamentos.reduce((acc, l) => acc + l.valor, 0);
-        setTotalDespesa(despesa);
-        setSaldo(totalReceita - despesa);
-    }, [lancamentos, totalReceita]);
-
     // Função para adicionar receita (usada pelo fluxo de checkout)
     function addReceita(nome: string, valor: number, categoria?: string, data?: any) {
         // Não adiciona receita como despesa, apenas para compatibilidade
@@ -271,28 +307,58 @@ export default function FinanceiroScreen() {
 
     const router = useRouter();
 
+    // Calcular período para os indicadores
+    const getPeriodoFiltro = () => {
+      let start: Date, end: Date;
+      const now = new Date();
+      
+      if (period === 'today') {
+        start = startOfDay(now);
+        end = endOfDay(now);
+      } else if (period === 'currentMonth') {
+        start = startOfMonth(now);
+        end = endOfMonth(now);
+      } else if (period === 'lastMonth') {
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        start = startOfMonth(lastMonth);
+        end = endOfMonth(lastMonth);
+      } else if (period === 'currentYear') {
+        start = startOfYear(now);
+        end = endOfYear(now);
+      } else if (period === 'custom' && customStart && customEnd) {
+        start = startOfDay(customStart);
+        end = endOfDay(customEnd);
+      } else {
+        // Quando não há filtro aplicado, mostrar o dia atual
+        start = startOfDay(now);
+        end = endOfDay(now);
+      }
+      
+      return { start, end };
+    };
+
+    const { indicadores, loading: indicadoresLoading } = useFinanceiroIndicadores(getPeriodoFiltro());
+
     const renderResumo = () => {
       // Cálculo filtrado
       const totalReceitaFiltro = receitasPeriodo.reduce((acc, ag) => {
+        let valor = 0;
         if (typeof ag.valor !== 'undefined') {
           // Receita extra (venda rápida)
-          return acc + (Number(ag.valor) || 0);
+          valor = Number(ag.valor) || 0;
         } else {
           // Receita de agendamento
-          return acc + (Number(ag.finalPrice ?? ag.servicoValor) || 0);
+          valor = Number(ag.finalPrice ?? ag.servicoValor) || 0;
         }
+        
+        return acc + valor;
       }, 0);
-      let totalDespesaFiltro = despesasPeriodo.reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
-      // Se filtro for 'currentMonth', mostrar total geral de despesas
-      if (period === 'currentMonth') {
-        totalDespesaFiltro = lancamentos.reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
-      }
+      
+      console.log('📊 TOTAL RECEITAS:', totalReceitaFiltro, 'Quantidade:', receitasPeriodo.length);
+      
+      const totalDespesaFiltro = despesasPeriodo.reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
       const saldoFiltro = totalReceitaFiltro - totalDespesaFiltro;
-      // Pie chart despesas por categoria
-      const despesasPorCategoriaAgrupado = despesasPeriodo.reduce((a, d) => { const c = d.categoria || 'Outros'; if (!a[c]) { a[c] = 0 } a[c] += d.valor; return a }, {} as Record<string, number>);
-      const pieChartDataRaw = Object.keys(despesasPorCategoriaAgrupado).map((c, i) => ({ name: c, population: despesasPorCategoriaAgrupado[c], color: ['#FF3B30', '#FF9500', '#FFCC00', '#5856D6', '#AF52DE', '#5AC8FA'][i % 6], legendFontColor: Colors.textSecondary, legendFontSize: 14 }));
-      const pieData = pieChartDataRaw.length > 0 ? pieChartDataRaw : [{ name: 'Sem dados', population: 1, color: '#E5E5EA', legendFontColor: Colors.textSecondary, legendFontSize: 14 }];
-      const barData = saldoFiltro !== 0 || totalReceitaFiltro !== 0 || totalDespesaFiltro !== 0 ? { labels: ['Balanço'], datasets: [{ data: [saldoFiltro] }] } : { labels: ['Sem dados'], datasets: [{ data: [0] }] };
+      
       return (
         <ScrollView showsVerticalScrollIndicator={false}>
           <PeriodoFinanceiroFiltro
@@ -303,20 +369,49 @@ export default function FinanceiroScreen() {
             customEnd={customEnd}
             setCustomEnd={setCustomEnd}
           />
-            <View style={styles.summaryCardsContainer}>
+
+          {/* Cards originais */}
+          <View style={styles.summaryCardsContainer}>
             <SummaryCard title="Receitas" value={totalReceitaFiltro} color={Colors.success} icon="arrow-up-circle" />
             <SummaryCard title="Despesas" value={totalDespesaFiltro} color={Colors.error} icon="arrow-down-circle" />
-            </View>
+          </View>
+          
           <View style={[styles.saldoCard, { backgroundColor: saldoFiltro >= 0 ? Colors.primary : Colors.error }]}> 
             <Text style={styles.saldoTitle}>Lucro Real do Período</Text>
             <Text style={styles.saldoValue}>R$ {saldoFiltro.toFixed(2).replace('.', ',')}</Text>
-            </View>
+          </View>
+          
           <TouchableOpacity
             style={{ backgroundColor: Colors.primary, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginBottom: 18, marginTop: 12 }}
             onPress={() => router.push('/historico-receitas')}
           >
             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Histórico de Receitas</Text>
           </TouchableOpacity>
+
+          {/* ===== NOVOS COMPONENTES ABAIXO DOS EXISTENTES ===== */}
+          
+          {/* Alerta de Saúde Financeira */}
+          <AlertaSaudeFinanceira alertaSaudeFinanceira={indicadores.alertaSaudeFinanceira} />
+
+          {/* Indicadores Financeiros */}
+          <IndicadoresFinanceirosCard
+            ticketMedio={indicadores.ticketMedio}
+            totalAtendimentos={indicadores.totalAtendimentos}
+            variacaoReceita={indicadores.variacaoReceita}
+          />
+
+          {/* Meta de Faturamento */}
+          <MetaFaturamentoCard metaMensal={indicadores.metaMensal} />
+
+          {/* Resumo por Forma de Pagamento */}
+          <FormasPagamentoCard receitasPorFormaPagamento={indicadores.receitasPorFormaPagamento} />
+
+          {/* Pendências Financeiras */}
+          <PendenciasFinanceirasCard
+            agendamentosPendentes={indicadores.agendamentosPendentes}
+            naoCompareceram={indicadores.naoCompareceram}
+          />
+          
           {(receitasPeriodo.length === 0 && despesasPeriodo.length === 0) && (
             <View style={{ alignItems: 'center', marginTop: 32 }}>
               <Feather name="info" size={32} color={Colors.textSecondary} />
@@ -444,7 +539,7 @@ const AddExpenseSheet = ({ isVisible, onClose }: { isVisible: boolean, onClose: 
 
     async function handleSave() {
         if (!user?.idSalao) {
-            Alert.alert('Erro', 'Salão não identificado.');
+            Alert.alert('Erro', 'Sua sessão pode ter expirado ou houve um erro ao carregar os dados. Por favor, faça o login novamente para continuar.');
             return;
         }
         if (!nome || !valor) {
@@ -478,7 +573,7 @@ const AddExpenseSheet = ({ isVisible, onClose }: { isVisible: boolean, onClose: 
             onClose();
         } catch (e) {
             console.log('Erro ao salvar despesa:', e);
-            Alert.alert('Erro', 'Erro ao salvar despesa.');
+            Alert.alert('Erro', 'Não foi possível salvar a despesa. Verifique sua conexão e se todos os campos foram preenchidos corretamente.');
         } finally {
             setSaving(false);
         }

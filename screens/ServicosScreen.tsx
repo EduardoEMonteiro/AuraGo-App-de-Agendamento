@@ -94,7 +94,7 @@ export default function ServicosScreen() {
     
     // Verifica se pode adicionar mais serviços
     if (!canAddMoreServicos(servicos.length)) {
-      Alert.alert('Limite Atingido', getLimitMessageFor('servicos'));
+      Alert.alert('Limite de serviços atingido', 'Para adicionar mais, você pode fazer um upgrade no seu plano ou remover um serviço existente.');
       actions.setSubmitting(false);
       return;
     }
@@ -152,7 +152,7 @@ export default function ServicosScreen() {
               setModalEdicao(false);
               Alert.alert('Sucesso', 'Serviço excluído.');
             } catch (error) {
-              Alert.alert('Erro', 'Não foi possível excluir o serviço.');
+              Alert.alert('Erro', 'Este serviço não pode ser excluído pois está vinculado a agendamentos futuros. Remova-o dos agendamentos antes de prosseguir.');
             }
           }
         }
@@ -331,7 +331,9 @@ export default function ServicosScreen() {
                     <Text style={{ fontSize: 16, fontWeight: '600', color: '#333' }}>Serviço Ativo</Text>
                     <Switch
                       value={values.ativo}
-                      onValueChange={(value: boolean) => setFieldValue('ativo', value)}
+                      onValueChange={(value: boolean) => {
+                        setFieldValue('ativo', value);
+                      }}
                       trackColor={{ false: "#ccc", true: "#81b0ff" }}
                       thumbColor={values.ativo ? "#1976d2" : "#f4f3f4"}
                     />

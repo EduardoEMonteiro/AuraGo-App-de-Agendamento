@@ -1,5 +1,5 @@
 import { doc, getDoc } from 'firebase/firestore';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../contexts/useAuthStore';
 import { db } from '../services/firebase';
 import {
@@ -38,10 +38,12 @@ interface SalaoInfo {
 }
 
 export function useSalaoInfo() {
-  const { user } = useAuthStore();
+  const { user, updateUserPlano } = useAuthStore();
   const [salaoInfo, setSalaoInfo] = useState<SalaoInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const reloadTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const reloadCountRef = useRef(0);
 
   const loadSalaoInfo = useCallback(async () => {
     console.log('SalaoInfo - loadSalaoInfo chamado, user.idSalao:', user?.idSalao);
@@ -59,14 +61,12 @@ export function useSalaoInfo() {
         console.log('SalaoInfo - Dados do salão carregados:', data);
         setSalaoInfo(data);
         
-        // Se o salão não tem plano, pode estar aguardando webhook
-        // Recarregar a cada 3 segundos para verificar se foi atualizado
-        if (!data.plano || data.statusAssinatura !== 'ativa') {
-          console.log('SalaoInfo - Salão sem plano ativo, agendando recarregamento');
-          setTimeout(loadSalaoInfo, 3000);
-        } else {
-          console.log('SalaoInfo - Salão com plano ativo:', data.plano, data.statusAssinatura);
-        }
+        // Atualiza o plano do usuário no Zustand baseado nos dados do salão
+        updateUserPlano(data);
+        
+        // REMOVIDO: Recarregamento automático que causava loop
+        // Se o salão não tem plano ativo, não recarrega automaticamente
+        console.log('SalaoInfo - Dados carregados, sem recarregamento automático');
       } else {
         setError('Salão não encontrado');
         setSalaoInfo(null);
@@ -83,6 +83,13 @@ export function useSalaoInfo() {
   useEffect(() => {
     console.log('SalaoInfo - useEffect disparado, user.idSalao:', user?.idSalao);
     loadSalaoInfo();
+    
+    // Cleanup function para limpar timer quando componente desmontar
+    return () => {
+      if (reloadTimerRef.current) {
+        clearTimeout(reloadTimerRef.current);
+      }
+    };
   }, [loadSalaoInfo]);
 
   // Funções de verificação de limitações

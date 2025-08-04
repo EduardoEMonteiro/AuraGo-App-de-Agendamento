@@ -107,7 +107,7 @@ export const ClientesScreen = memo(() => {
               setModalEdicao(false);
               Alert.alert('Sucesso', 'Cliente excluído.');
             } catch (error) {
-              Alert.alert('Erro', 'Não foi possível excluir o cliente.');
+              Alert.alert('Erro', 'Este cliente não pode ser excluído pois possui agendamentos ou um histórico financeiro. Para excluí-lo, é necessário remover seus registros primeiro.');
             }
           }
         }

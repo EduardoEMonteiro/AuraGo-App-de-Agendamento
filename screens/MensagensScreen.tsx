@@ -116,10 +116,10 @@ export default function MensagensScreen() {
   }
 
   async function handleSalvar() {
-    if (!user?.idSalao) {
-      Alert.alert('Erro', 'Salão não identificado.');
-      return;
-    }
+            if (!user?.idSalao) {
+            Alert.alert('Erro', 'Sua sessão pode ter expirado ou houve um erro ao carregar os dados. Por favor, faça o login novamente para continuar.');
+            return;
+        }
     Keyboard.dismiss();
     setSalvando(true);
     try {
@@ -128,7 +128,7 @@ export default function MensagensScreen() {
       await setDoc(ref, mensagens, { merge: true });
       Alert.alert('Sucesso', 'Mensagens salvas com sucesso!');
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar as mensagens.');
+      Alert.alert('Erro', 'Falha na conexão. Verifique sua internet e tente novamente.');
       console.log('ERRO AO SALVAR:', error instanceof Error ? error.message : String(error), error);
     } finally {
       setSalvando(false);

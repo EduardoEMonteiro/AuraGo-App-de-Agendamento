@@ -7,6 +7,7 @@ import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Platform, Scr
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Yup from 'yup';
+import { ConnectionStatus } from '../components/ConnectionStatus';
 import { CustomHeader } from '../components/CustomHeader';
 import { useAuthStore } from '../contexts/useAuthStore';
 import { useSubmit } from '../hooks/useSubmit';
@@ -15,6 +16,8 @@ import { db } from '../services/firebase';
 const configOptions = [
     { key: 'payments', icon: 'credit-card', title: 'Formas de Pagamento', description: 'Gerencie as formas de pagamento' },
     { key: 'subscription', icon: 'settings', title: 'Gerenciar Assinatura', description: 'Verificar status, alterar plano, cancelar' },
+    { key: 'privacy', icon: 'shield', title: 'Privacidade e Dados', description: 'Exportar dados, portabilidade e exclusão de conta' },
+    { key: 'terms', icon: 'file-text', title: 'Termos de Uso e Política de Privacidade', description: 'Visualizar e gerenciar consentimentos' },
     { key: 'logout', icon: 'log-out', title: 'Sair', description: 'Encerrar sessão' },
 ];
 
@@ -57,11 +60,11 @@ export const ConfiguracoesScreen = memo(() => {
             }
             
             console.log(`Migração concluída! ${migrados} salões migrados.`);
-            Alert.alert('Migração Concluída', `${migrados} salões foram migrados com sucesso!`);
+            Alert.alert('Dados do aplicativo atualizados com sucesso!', `${migrados} salões foram migrados com sucesso!`);
             
         } catch (error) {
             console.error('Erro na migração global:', error);
-            Alert.alert('Erro', 'Erro durante a migração global.');
+            Alert.alert('Erro', 'Ocorreu um erro ao atualizar os dados do aplicativo. Por favor, feche e abra o app novamente. Se o erro persistir, entre em contato com o suporte.');
         }
     }, [user?.idSalao]);
 
@@ -93,6 +96,14 @@ export const ConfiguracoesScreen = memo(() => {
         }
         if (key === 'subscription') {
             router.push('/gerenciar-assinatura');
+            return;
+        }
+        if (key === 'privacy') {
+            router.push('/privacidade');
+            return;
+        }
+        if (key === 'terms') {
+            router.push('/termos-privacidade');
             return;
         }
         if (key === 'migrate') {
@@ -144,6 +155,7 @@ export const ConfiguracoesScreen = memo(() => {
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
             <CustomHeader title="Configurações" showBackButton={false} />
+            <ConnectionStatus />
             <ScrollView style={styles.optionsContainer} showsVerticalScrollIndicator={false}>
                 {/* Perfil (unificado) */}
                 {renderCard({
@@ -202,6 +214,8 @@ export const ConfiguracoesScreen = memo(() => {
                     description: opt.description,
                     onPress: () => handleOptionPress(opt.key),
                 }))}
+
+
             </ScrollView>
             {/* Modais fora do ScrollView para overlay correto */}
             {modal === 'notifications' && <MockModal title="Notificações" onClose={() => setModal(null)} />}
@@ -235,7 +249,7 @@ function EditProfileModal({ user, onClose, setUser }: { user: any, onClose: () =
                             Alert.alert('Sucesso', 'Perfil atualizado!');
                             onClose();
                         } catch (error) {
-                            Alert.alert('Erro', 'Não foi possível salvar o perfil.');
+                            Alert.alert('Erro', 'Falha na conexão. Verifique sua internet e tente novamente.');
                         } finally {
                             setSubmitting(false);
                         }
@@ -367,7 +381,7 @@ function EditHorarioModal({ user, horarios, setHorarios, onBack }: { user: any, 
                     Alert.alert('Sucesso', 'Horários atualizados!');
                     onBack();
                 } catch (e) {
-                    Alert.alert('Erro', 'Não foi possível salvar.');
+                    Alert.alert('Erro', 'Falha na conexão. Verifique sua internet e tente novamente.');
                 } finally {
                     setSubmitting(false);
                 }
@@ -435,7 +449,7 @@ function EditWhatsModal({ user, msgWhats, setMsgWhats, onBack }: { user: any, ms
                         Alert.alert('Sucesso', 'Mensagem atualizada!');
                         onBack();
                     } catch (e) {
-                        Alert.alert('Erro', 'Não foi possível salvar.');
+                        Alert.alert('Erro', 'Falha na conexão. Verifique sua internet e tente novamente.');
                     } finally {
                         setLoading(false);
                     }
@@ -669,7 +683,7 @@ export function MensagensWhatsappModal({ user, onClose }: { user: any, onClose: 
 
     async function handleSalvar() {
         if (!user || !user.idSalao) {
-            Alert.alert('Erro', 'Salão não identificado.');
+            Alert.alert('Erro', 'Sua sessão pode ter expirado ou houve um erro ao carregar os dados. Por favor, faça o login novamente para continuar.');
             return;
         }
         Keyboard.dismiss();
@@ -681,7 +695,7 @@ export function MensagensWhatsappModal({ user, onClose }: { user: any, onClose: 
             Alert.alert('Sucesso!', 'Suas mensagens foram salvas.');
             onClose();
         } catch (error) {
-            Alert.alert('Erro', 'Não foi possível salvar as mensagens.');
+            Alert.alert('Erro', 'Falha na conexão. Verifique sua internet e tente novamente.');
         }
     }
 
@@ -917,6 +931,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: hp('2%'),
     },
+
 });
 
 const mockStyles = StyleSheet.create({

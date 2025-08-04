@@ -5,6 +5,7 @@
 // ===================================================================
 
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { trackStripeCheckoutCompleted, trackStripeCheckoutFailed } from '../utils/trialAnalytics';
 
 const functions = getFunctions();
 
@@ -13,8 +14,7 @@ export const STRIPE_PUBLISHABLE_KEY = 'pk_test_51RmiXJAx802U9VDAEN2E8Q6lzuVU0zfb
 
 // IDs dos seus planos no Stripe (price_...).
 export const STRIPE_PRICE_IDS = {
-  essencial: 'price_1RmlBgAx802U9VDAtycmj1KL', // ID do seu plano Essencial
-  pro: 'price_ID_DO_PLANO_PRO_AQUI',           // Coloque o ID do plano Pro quando tiver
+  essencial: 'price_1RmlBgAx802U9VDAtycmj1KL'
 };
 
 // ===================================================================
@@ -39,10 +39,10 @@ export async function initializeStripe() {
 
 /**
  * Função PRINCIPAL: Chama seu backend no Firebase para criar a sessão de checkout.
- * @param {'essencial' | 'pro'} plano - O plano que o usuário selecionou.
+ * @param {'essencial'} plano - O plano que o usuário selecionou.
  * @param {string} idSalao - O ID do salão do usuário logado (ex: user.idSalao).
  */
-export async function createRealCheckoutSession(plano: 'essencial' | 'pro', idSalao: string) {
+export async function createRealCheckoutSession(plano: 'essencial', idSalao: string) {
   console.log('=== DEBUG STRIPE SERVICE ===');
   console.log('Parâmetros recebidos:', { plano, idSalao });
   
@@ -96,11 +96,21 @@ export async function createRealCheckoutSession(plano: 'essencial' | 'pro', idSa
     }
 
     console.log('Sessão criada com sucesso:', data);
+    
+    // Registra sucesso do checkout
+    if (data.sessionId) {
+      await trackStripeCheckoutCompleted(idSalao, plano, data.sessionId);
+    }
+    
     // Retorna os dados para a sua tela de checkout usar.
     return data; // Deve conter { sessionId: '...', url: '...' }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao chamar a função createRealCheckoutSession:', error);
+    
+    // Registra falha do checkout
+    await trackStripeCheckoutFailed(idSalao, plano, error.message || 'Erro desconhecido');
+    
     console.log('Tentando usar checkout de teste...');
     
     // Usar checkout de teste como fallback
@@ -110,10 +120,10 @@ export async function createRealCheckoutSession(plano: 'essencial' | 'pro', idSa
 
 /**
  * Função de FALLBACK: Para testes quando a Cloud Function não está disponível
- * @param {'essencial' | 'pro'} plano - O plano que o usuário selecionou.
+ * @param {'essencial'} plano - O plano que o usuário selecionou.
  * @param {string} idSalao - O ID do salão do usuário logado.
  */
-export async function createTestCheckoutSession(plano: 'essencial' | 'pro', idSalao: string) {
+export async function createTestCheckoutSession(plano: 'essencial', idSalao: string) {
   console.log('Usando checkout de teste para plano:', plano);
   
   // Simular uma sessão de checkout para testes

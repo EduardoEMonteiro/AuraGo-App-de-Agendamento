@@ -54,7 +54,7 @@ const formasPagamentoPadrao = [
 
 // --- COMPONENTE DE CAMPO DE FORMULÁRIO REUTILIZÁVEL ---
 // Ajuda a limpar o JSX principal e a reutilizar estilos
-const FormField = ({ label, error, touched, children }) => (
+const FormField = ({ label, error, touched, children }: { label: string; error?: string; touched?: boolean; children: React.ReactNode }) => (
   <View style={styles.fieldContainer}>
     <Text style={styles.label}>{label}</Text>
     {children}
@@ -66,7 +66,7 @@ export default function CadastroSalaoScreen() {
   const { user, setUser, updateUser } = useAuthStore();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const planoEscolhido = params.plano as 'essencial' | 'pro';
+  const planoEscolhido = (params.plano as 'essencial' | 'trial') || 'trial';
 
   // --- FUNÇÃO DE SALVAR (CORRIGIDA) ---
   async function salvarSalao(values: any, { setSubmitting }: any) {
@@ -75,7 +75,7 @@ export default function CadastroSalaoScreen() {
         nome: values.nome,
         telefone: values.telefone,
         responsavel: user?.nome || user?.email || '',
-        plano: null,
+        plano: planoEscolhido || 'trial',
         mensagemWhatsapp: 'Olá! Gostaria de agendar um horário.',
         horarioFuncionamento: horariosPadrao,
         endereco: {
@@ -99,32 +99,54 @@ export default function CadastroSalaoScreen() {
       
       // Criar mensagens padrão do WhatsApp
       const mensagensPadrao = {
-        confirmacao: 'Olá [NOME]! 😊 Seu agendamento para [SERVIÇO] com [PROFISSIONAL] está confirmado para o dia [DATA] às [HORA]. Qualquer dúvida, estamos à disposição. 💇‍♀️✨ Endereço: [ENDEREÇO]',
-        lembrete: 'Oi [NOME], tudo bem? Só passando pra lembrar do seu agendamento amanhã! 📍 [SERVIÇO] com [PROFISSIONAL] 📅 Data: [DATA] ⏰ Horário: [HORA] Qualquer mudança é só nos avisar com antecedência 💖 Endereço: [ENDEREÇO]'
+        confirmacao: 'Olá [NOME]! Confirmamos seu agendamento para [SERVIÇO] com [PROFISSIONAL] no dia [DATA] às [HORA]. Aguardamos você!',
+        lembrete: 'Olá [NOME]! Lembramos que você tem um agendamento amanhã às [HORA] para [SERVIÇO]. Até lá!',
+        cancelamento: 'Olá [NOME]! Seu agendamento para [SERVIÇO] no dia [DATA] às [HORA] foi cancelado. Entre em contato para reagendar.',
       };
+      
       const mensagensRef = doc(db, 'saloes', salaoRef.id, 'configuracoes', 'mensagensWhatsapp');
       batch.set(mensagensRef, mensagensPadrao);
       
       await batch.commit();
       
-      const userId = user?.id || user?.uid;
-      if (userId) {
-        await updateDoc(doc(db, 'usuarios', userId), { idSalao: salaoRef.id });
-        console.log('Usuário atualizado no Firestore com idSalao:', salaoRef.id);
-        
-        // --- LINHA CRÍTICA DA CORREÇÃO ---
-        // Força a atualização do estado local no Zustand
-        updateUser({ idSalao: salaoRef.id });
-        console.log('Estado do usuário atualizado no Zustand com idSalao:', salaoRef.id);
-        
-        // REMOVIDO: Navegação imperativa. O RootLayout cuidará do roteamento.
-        console.log('Salão cadastrado com sucesso. RootLayout redirecionará automaticamente para seleção de planos.');
-      }
-      Alert.alert('Sucesso', 'Salão cadastrado com sucesso! Redirecionando para seleção de planos...');
-    } catch (e: any) {
-      Alert.alert('Erro', e.message);
-    } finally {
+      // Atualizar usuário com o ID do salão
+      await updateDoc(doc(db, 'usuarios', user.id), {
+        idSalao: salaoRef.id,
+        plano: planoEscolhido || 'trial',
+        freeTrialStartAt: new Date(),
+        freeTrialExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dias
+        statusAssinatura: 'trial',
+      });
+      
+      // Atualizar estado local
+      updateUser({
+        idSalao: salaoRef.id,
+        plano: planoEscolhido || 'trial',
+        freeTrialStartAt: new Date(),
+        freeTrialExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        statusAssinatura: 'trial',
+      });
+      
       setSubmitting(false);
+      
+      // Mostrar mensagem de sucesso baseada no plano
+      Alert.alert(
+        'Salão Cadastrado!',
+        planoEscolhido === 'trial'
+          ? 'Seu período gratuito de 30 dias começou! Aproveite todos os recursos.'
+          : 'Seu período gratuito de 30 dias começou! Aproveite todos os recursos.',
+        [
+          {
+            text: 'Continuar',
+            onPress: () => router.replace('/boas-vindas' as any)
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('Erro ao salvar salão:', error);
+      setSubmitting(false);
+      Alert.alert('Erro', 'Não foi possível cadastrar o salão. Tente novamente.');
     }
   }
 
@@ -185,12 +207,19 @@ export default function CadastroSalaoScreen() {
               }, [values.cep]);
 
               const planInfoStyle =
-                planoEscolhido === 'pro'
+                planoEscolhido === 'essencial'
                   ? {
                       backgroundColor: '#E8F5E9',
                       borderColor: '#388E3C',
                       textColor: '#388E3C',
                       text: `Plano Pro será ativado após pagamento`,
+                    }
+                  : planoEscolhido === 'trial'
+                  ? {
+                      backgroundColor: '#FFF3CD',
+                      borderColor: '#FFC107',
+                      textColor: '#856404',
+                      text: `Período gratuito de 30 dias ativo`,
                     }
                   : {
                       backgroundColor: '#E3F2FD',

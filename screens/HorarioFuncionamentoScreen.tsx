@@ -102,10 +102,10 @@ export default function HorarioFuncionamentoScreen() {
   }
 
   async function handleSalvar() {
-    if (!user?.idSalao) {
-      Alert.alert('Erro', 'Salão não identificado.');
-      return;
-    }
+            if (!user?.idSalao) {
+            Alert.alert('Erro', 'Sua sessão pode ter expirado ou houve um erro ao carregar os dados. Por favor, faça o login novamente para continuar.');
+            return;
+        }
     
     setSalvando(true);
     try {
@@ -117,7 +117,7 @@ export default function HorarioFuncionamentoScreen() {
       
       Alert.alert('Sucesso', 'Horários salvos com sucesso!');
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar os horários.');
+      Alert.alert('Erro', 'Falha na conexão. Verifique sua internet e tente novamente.');
       console.log('ERRO AO SALVAR HORÁRIOS:', error);
     } finally {
       setSalvando(false);

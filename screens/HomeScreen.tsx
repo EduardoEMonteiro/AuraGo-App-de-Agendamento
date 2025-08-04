@@ -90,15 +90,15 @@ export const HomeScreen = memo(() => {
   }, [logout]);
 
   const handleFinanceiroPress = useCallback(() => {
-    Alert.alert('Acesso ao Financeiro', 'Funcionalidade de financeiro!');
+            Alert.alert('✨ Novo: Módulo Financeiro', 'Controle suas finanças diretamente no app. Toque aqui para explorar.');
   }, []);
 
   const handleAgendarQualquerPress = useCallback(() => {
-    Alert.alert('Agendamento', 'Agendar para qualquer profissional!');
+            Alert.alert('💡 Dica de Agendamento', 'Você sabia que pode agendar horários para qualquer profissional do seu salão? Organize sua agenda com mais facilidade.');
   }, []);
 
   const handleAgendarProprioPress = useCallback(() => {
-    Alert.alert('Agendamento', 'Agendar para mim!');
+            Alert.alert('📅 Agendamento Rápido', 'Agende um horário para você mesmo de forma rápida e simples.');
   }, []);
 
   const renderItem = useCallback(({ item }: { item: any }) => (

@@ -8,6 +8,11 @@ import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Scroll
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../contexts/useAuthStore';
 import { auth, db } from '../services/firebase';
+import { salvarConsentimento } from '../services/privacidade';
+import { registerForPushNotificationsAsync, savePushTokenToFirestore } from '../services/pushNotifications';
+import { trackTrialStarted } from '../utils/trialAnalytics';
+import { scheduleAllTrialNotifications } from '../utils/trialNotifications';
+import { calculateTrialExpiration } from '../utils/trialUtils';
 
 const CLIENT_ID = '108734211856-97el2rk337iq6ii8bkrgmp7m9l0btm1o.apps.googleusercontent.com';
 
@@ -28,12 +33,13 @@ export default function LoginScreen() {
   const [registerError, setRegisterError] = useState('');
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'login' | 'register' | 'reset'>('login');
+  const [aceitouTermos, setAceitouTermos] = useState(false);
 
   // Debug Zustand
   // @ts-ignore
   console.log('user Zustand:', require('../contexts/useAuthStore').useAuthStore.getState().user);
 
-  const redirectUri = AuthSession.makeRedirectUri({ useProxy: true });
+  const redirectUri = AuthSession.makeRedirectUri();
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: CLIENT_ID,
@@ -126,6 +132,45 @@ export default function LoginScreen() {
                   placeholderTextColor="#6B7280"
                   style={{ backgroundColor: '#fff', borderRadius: 12, borderWidth: 0, padding: 16, fontSize: 16, marginBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, color: '#000' }}
                 />
+                
+                {/* Checkbox de aceitação dos termos */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, paddingHorizontal: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => setAceitouTermos(!aceitouTermos)}
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 4,
+                      borderWidth: 2,
+                      borderColor: aceitouTermos ? '#007aff' : '#ccc',
+                      backgroundColor: aceitouTermos ? '#007aff' : 'transparent',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 12,
+                    }}
+                  >
+                    {aceitouTermos && (
+                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                  <Text style={{ flex: 1, fontSize: 14, color: '#666', lineHeight: 20 }}>
+                    Eu li e aceito os{' '}
+                    <Text 
+                      style={{ color: '#007aff', textDecorationLine: 'underline' }}
+                      onPress={() => router.push('/termos-uso')}
+                    >
+                      Termos de Uso
+                    </Text>
+                    {' '}e a{' '}
+                    <Text 
+                      style={{ color: '#007aff', textDecorationLine: 'underline' }}
+                      onPress={() => router.push('/politica-privacidade')}
+                    >
+                      Política de Privacidade
+                    </Text>
+                    {' '}do Aura.
+                  </Text>
+                </View>
               </>
             )}
             {mode === 'reset' && (
@@ -195,9 +240,9 @@ export default function LoginScreen() {
             {mode === 'register' && (
               <TouchableOpacity
                 onPress={handleRegister}
-                disabled={loading}
+                disabled={loading || !aceitouTermos}
                 style={{
-                  backgroundColor: '#007aff',
+                  backgroundColor: aceitouTermos ? '#007aff' : '#ccc',
                   borderRadius: 12,
                   padding: 16,
                   alignItems: 'center',
@@ -246,7 +291,10 @@ export default function LoginScreen() {
             )}
 
             {mode === 'register' && (
-              <TouchableOpacity onPress={() => setMode('login')}>
+              <TouchableOpacity onPress={() => {
+                setMode('login');
+                setAceitouTermos(false);
+              }}>
                 <Text style={{ color: '#007aff', fontSize: 14 }}>
                   Já tem uma conta? Faça login
                 </Text>
@@ -286,38 +334,9 @@ export default function LoginScreen() {
         const userData = userDoc.exists() ? userDoc.data() : {};
         
         if (!userData.idSalao) {
-          // NOVO USUÁRIO - Exige verificação
-          Alert.alert(
-            "E-mail Não Verificado",
-            "Por favor, verifique seu e-mail antes de fazer login. Enviamos um link de confirmação para sua caixa de entrada.",
-            [
-              {
-                text: "Reenviar E-mail",
-                onPress: async () => {
-                  try {
-                    await sendEmailVerification(res.user);
-                    Alert.alert(
-                      "E-mail Reenviado",
-                      "Enviamos um novo link de verificação para seu e-mail. Verifique sua caixa de entrada."
-                    );
-                  } catch (error) {
-                    Alert.alert("Erro", "Não foi possível reenviar o e-mail. Tente novamente.");
-                  }
-                },
-              },
-              {
-                text: "OK",
-                onPress: async () => {
-                  try {
-                    await signOut(auth);
-                    console.log('Usuário deslogado por e-mail não verificado.');
-                  } catch (signOutError) {
-                    console.error("Erro ao deslogar:", signOutError);
-                  }
-                },
-              },
-            ]
-          );
+          // NOVO USUÁRIO - Redirecionar para tela de verificação
+          setUser({ ...res.user, ...userData, id: res.user.uid });
+          router.replace('/email-verificacao' as any);
         } else {
           // USUÁRIO ANTIGO - Permite acesso mas avisa
           Alert.alert(
@@ -354,7 +373,7 @@ export default function LoginScreen() {
       
       const userDoc = await getDoc(doc(db, 'usuarios', res.user.uid));
       if (!userDoc.exists()) {
-        Alert.alert('Erro', 'Usuário não encontrado no Firestore.');
+        Alert.alert('Erro', 'E-mail ou senha inválidos. Verifique seus dados e tente novamente.');
         setLoading(false);
         return;
       }
@@ -380,6 +399,10 @@ export default function LoginScreen() {
       setRegisterError('As senhas não coincidem.');
       return;
     }
+    if (!aceitouTermos) {
+      setRegisterError('Você deve aceitar os Termos de Uso e Política de Privacidade.');
+      return;
+    }
     
     setLoading(true);
     try {
@@ -392,17 +415,55 @@ export default function LoginScreen() {
       await sendEmailVerification(user);
       console.log('E-mail de verificação enviado');
 
-      // 3. Salva os dados no Firestore
-      await setDoc(doc(db, 'usuarios', user.uid), {
+      // 3. Cria o documento do usuário no Firestore com dados do trial
+      const trialStartDate = new Date();
+      const trialExpirationDate = calculateTrialExpiration();
+      
+      const userData = {
         id: user.uid,
-        email: user.email,
+        email: email,
         nome: firstName,
         sobrenome: lastName,
         role: 'gerente',
         idSalao: null,
-      });
-      console.log('Documento do usuário salvo no Firestore');
-      
+        emailVerificado: false,
+        freeTrialStartAt: trialStartDate,
+        freeTrialExpiresAt: trialExpirationDate,
+        plano: 'trial',
+        statusAssinatura: 'trial',
+        aceitouTermos: true,
+        dataAceiteTermos: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      await setDoc(doc(db, 'usuarios', user.uid), userData);
+      console.log('Dados do usuário criados no Firestore com trial');
+
+      // 4. Salvar consentimento dos termos
+      await salvarConsentimento(user.uid, 'termos_uso', true, '1.0');
+      await salvarConsentimento(user.uid, 'politica_privacidade', true, '1.0');
+      console.log('Consentimentos salvos no Firestore');
+
+      // 5. Registra analytics do trial (não crítico)
+      try {
+        await trackTrialStarted(user.uid, trialStartDate);
+      } catch (analyticsError) {
+        console.log('Analytics não registrado (não crítico):', analyticsError);
+      }
+
+      // 6. Agenda notificações do trial (se tiver push token) - não crítico
+      try {
+        const pushToken = await registerForPushNotificationsAsync();
+        if (pushToken) {
+          await savePushTokenToFirestore(user.uid, pushToken);
+          await scheduleAllTrialNotifications(user.uid, pushToken, trialStartDate);
+          console.log('Notificações do trial agendadas');
+        }
+      } catch (notificationError) {
+        console.log('Notificações não agendadas (não crítico):', notificationError);
+      }
+
       // 4. MOSTRA O ALERTA PRIMEIRO - Passo CRÍTICO
       Alert.alert(
         "Cadastro Realizado com Sucesso!",

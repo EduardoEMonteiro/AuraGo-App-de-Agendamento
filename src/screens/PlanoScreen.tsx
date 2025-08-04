@@ -7,8 +7,7 @@ import { StripeCheckoutWeb } from '../components/StripeCheckoutWeb';
 import { StripeProviderUniversal } from '../components/StripeProviderUniversal';
 
 const planos = [
-  { id: 'essencial', nome: 'Essencial', priceId: 'price_1RmlBgAx802U9VDAtycmj1KL', preco: 49.9 },
-  { id: 'pro', nome: 'Pro', priceId: 'price_ID_DO_PLANO_PRO_AQUI', preco: 99.9 },
+  { id: 'essencial', nome: 'Essencial', priceId: 'price_1RmlBgAx802U9VDAtycmj1KL', preco: 19.9 },
 ];
 
 export default function PlanoScreen({ user }) {

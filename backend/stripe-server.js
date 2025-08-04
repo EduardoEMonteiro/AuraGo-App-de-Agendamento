@@ -15,11 +15,6 @@ const STRIPE_PRODUCTS = {
     priceId: 'price_essencial_monthly', // ID do produto no Stripe
     name: 'Plano Essencial',
     price: 1990, // R$ 19,90 em centavos
-  },
-  pro: {
-    priceId: 'price_pro_monthly', // ID do produto no Stripe
-    name: 'Plano Pro',
-    price: 5990, // R$ 59,90 em centavos
   }
 };
 

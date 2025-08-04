@@ -10,7 +10,7 @@ Login → Registro → Seleção de Plano → Checkout Stripe → Cadastro do Sa
 ```
 
 ### 2. **Telas Implementadas**
-- ✅ `SelecaoPlanoScreen.tsx` - Escolha entre Plano Essencial (Grátis) e Pro (R$ 29,90/mês)
+- ✅ `SelecaoPlanoScreen.tsx` - Escolha do Plano Essencial (R$ 19,90/mês)
 - ✅ `StripeCheckoutScreen.tsx` - Checkout do Stripe via WebView
 - ✅ `CadastroSalaoScreen.tsx` - Cadastro do salão com plano já escolhido
 
@@ -42,7 +42,6 @@ const BACKEND_URL = 'https://seu-backend.com';
 ### 3. **Produtos no Stripe Dashboard**
 Crie os produtos no Stripe:
 - **Plano Essencial**: R$ 19,90/mês (1990 centavos)
-- **Plano Pro**: R$ 59,90/mês (5990 centavos)
 
 ### 4. **Webhook Secret**
 Configure o webhook no Stripe Dashboard e atualize em `backend/stripe-server.js`:
@@ -103,8 +102,7 @@ router.push({
 ### 2. **Checkout Stripe**
 ```typescript
 // StripeCheckoutScreen.tsx
-// - Plano Essencial: Redireciona direto para cadastro
-// - Plano Pro: Abre WebView do Stripe
+// - Plano Essencial: Abre WebView do Stripe
 ```
 
 ### 3. **Cadastro do Salão**
@@ -121,7 +119,7 @@ saloes/{salaoId} = {
   nome: "Nome do Salão",
   telefone: "(11) 99999-9999",
   responsavel: "Nome do Responsável",
-  plano: "essencial" | "pro", // ✅ NOVO CAMPO
+  plano: "essencial", // ✅ NOVO CAMPO
   mensagemWhatsapp: "...",
   horarioFuncionamento: {...},
   formasPagamento: [...]
@@ -131,22 +129,14 @@ saloes/{salaoId} = {
 ## 🎯 Limitações por Plano
 
 ### Plano Essencial (R$ 19,90/mês)
-- ✅ 3 profissionais
-- ✅ 100 clientes
-- ✅ 20 serviços
-- ✅ 50 produtos
-- ❌ Relatórios avançados
-- ❌ Integração WhatsApp
-- ❌ Backup automático
-
-### Plano Pro (R$ 59,90/mês)
-- ✅ Profissionais ilimitados
+- ✅ 1 profissional
 - ✅ Clientes ilimitados
 - ✅ Serviços ilimitados
 - ✅ Produtos ilimitados
 - ✅ Relatórios avançados
 - ✅ Integração WhatsApp
 - ✅ Backup automático
+- ✅ Agendamento avançado
 
 ## 🚀 Como Usar
 
@@ -156,68 +146,50 @@ import { useSalaoInfo } from '../hooks/useSalaoInfo';
 
 const { canAddMoreServicos, getLimitMessageFor } = useSalaoInfo();
 
-if (!canAddMoreServicos(servicos.length)) {
-  Alert.alert('Limite Atingido', getLimitMessageFor('servicos'));
-  return;
+// Verificar se pode adicionar mais serviços
+if (!canAddMoreServicos(servicosAtuais.length)) {
+  alert(getLimitMessageFor('servicos'));
 }
 ```
 
-### 2. **Mostrar Informações do Plano**
+### 2. **Verificar Recursos**
 ```typescript
-import { PlanoInfoCard } from '../components/PlanoInfoCard';
+const { hasAdvancedReports, hasWhatsAppIntegration } = useSalaoInfo();
 
-<PlanoInfoCard showUpgradeButton={true} />
+// Verificar se tem relatórios avançados
+if (hasAdvancedReports()) {
+  // Mostrar relatórios avançados
+}
+
+// Verificar se tem integração WhatsApp
+if (hasWhatsAppIntegration()) {
+  // Mostrar opções de WhatsApp
+}
+```
+
+### 3. **Informações do Plano**
+```typescript
+const { getCurrentPlanoInfo } = useSalaoInfo();
+const planoInfo = getCurrentPlanoInfo();
+
+console.log(planoInfo?.nome); // "Plano Essencial"
+console.log(planoInfo?.preco); // "R$ 19,90/mês"
 ```
 
 ## 🔒 Segurança
 
-### 1. **Chaves do Stripe**
-- ✅ Nunca exponha a chave secreta no frontend
-- ✅ Use apenas a chave pública no app
-- ✅ Processe pagamentos no backend
+- ✅ Webhook verifica assinatura do Stripe
+- ✅ Apenas servidor atualiza plano
+- ✅ Frontend não pode manipular pagamentos
+- ✅ Logs de auditoria completos
 
-### 2. **Validação**
-- ✅ Sempre verifique o status do pagamento no backend
-- ✅ Use webhooks para confirmações
-- ✅ Valide dados antes de salvar no Firestore
+## 📈 Analytics
 
-## 🧪 Teste
-
-### 1. **Cartões de Teste**
-Use os cartões de teste do Stripe:
-- **Sucesso**: `4242 4242 4242 4242`
-- **Falha**: `4000 0000 0000 0002`
-
-### 2. **Webhook Testing**
-Use o Stripe CLI para testar webhooks localmente:
-```bash
-stripe listen --forward-to localhost:3000/api/webhook
-```
-
-## 📝 Próximos Passos
-
-1. **Implementar Backend Real**
-   - Deploy do servidor Node.js
-   - Configurar webhooks no Stripe
-   - Testar fluxo completo
-
-2. **Melhorias**
-   - Página de upgrade de plano
-   - Cancelamento de assinatura
-   - Histórico de pagamentos
-   - Faturas e recibos
-
-3. **Recursos Avançados**
-   - Integração com WhatsApp (Plano Pro)
-   - Backup automático (Plano Pro)
-   - Relatórios avançados (Plano Pro)
-
-## 🆘 Suporte
-
-Para dúvidas ou problemas:
-- 📧 Email: suporte@aura.com
-- 📱 WhatsApp: (11) 99999-9999
-- 📚 Documentação: [docs.aura.com](https://docs.aura.com)
+- ✅ Tracking de checkout iniciado
+- ✅ Tracking de checkout concluído
+- ✅ Tracking de checkout falhado
+- ✅ Tracking de trial iniciado
+- ✅ Tracking de trial expirado
 
 ---
 

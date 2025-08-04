@@ -43,23 +43,25 @@ export default function EmailVerificationBanner({ visible, onDismiss }: EmailVer
     try {
       await refreshUser();
       
-      // Verifica se o e-mail foi verificado após a atualização
-      const updatedUser = useAuthStore.getState().user;
-      if (updatedUser?.emailVerified) {
-        Alert.alert(
-          "E-mail Verificado!",
-          "Seu e-mail foi confirmado com sucesso. O banner será removido."
-        );
-        onDismiss();
-      } else {
-        Alert.alert(
-          "E-mail Ainda Não Verificado",
-          "Seu e-mail ainda não foi verificado. Verifique sua caixa de entrada e clique no link de confirmação."
-        );
-      }
+      // Aguarda um pouco para garantir que o estado foi atualizado
+      setTimeout(() => {
+        const updatedUser = useAuthStore.getState().user;
+        if (updatedUser?.emailVerified) {
+          Alert.alert(
+            "E-mail Verificado!",
+            "Seu e-mail foi confirmado com sucesso. O banner será removido."
+          );
+          onDismiss();
+        } else {
+          Alert.alert(
+            "E-mail Ainda Não Verificado",
+            "Seu e-mail ainda não foi verificado. Verifique sua caixa de entrada e clique no link de confirmação."
+          );
+        }
+        setChecking(false);
+      }, 500);
     } catch (error) {
       Alert.alert("Erro", "Não foi possível verificar o status do e-mail. Tente novamente.");
-    } finally {
       setChecking(false);
     }
   };

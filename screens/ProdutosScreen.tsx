@@ -125,7 +125,7 @@ export default function ProdutosScreen() {
               setModalEdicao(false);
               Alert.alert('Sucesso', 'Produto excluído.');
             } catch (error) {
-              Alert.alert('Erro', 'Não foi possível excluir o produto.');
+              Alert.alert('Erro', 'Este produto não pode ser excluído pois está vinculado a vendas ou agendamentos. Remova os vínculos antes de prosseguir.');
             }
           }
         }

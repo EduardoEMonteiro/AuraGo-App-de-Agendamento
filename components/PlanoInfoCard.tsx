@@ -1,5 +1,5 @@
-import { memo, useCallback } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { memo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import { useSalaoInfo } from '../hooks/useSalaoInfo';
 
@@ -8,7 +8,7 @@ interface PlanoInfoCardProps {
 }
 
 export const PlanoInfoCard = memo<PlanoInfoCardProps>(({ 
-  showUpgradeButton = true 
+  showUpgradeButton = false 
 }) => {
   const { salaoInfo, getCurrentPlanoInfo } = useSalaoInfo();
   
@@ -17,26 +17,9 @@ export const PlanoInfoCard = memo<PlanoInfoCardProps>(({
   }
 
   const planoInfo = getCurrentPlanoInfo();
-  const isEssencial = salaoInfo.plano === 'essencial';
-
-  const handleUpgrade = useCallback(() => {
-    Alert.alert(
-      'Upgrade para Plano Pro',
-      'Entre em contato conosco para fazer o upgrade do seu plano e desbloquear todos os recursos avançados!',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Contatar', 
-          onPress: useCallback(() => {
-            Alert.alert('Contato', 'WhatsApp: (11) 99999-9999\nEmail: contato@aura.com');
-          }, [])
-        }
-      ]
-    );
-  }, []);
 
   return (
-    <View style={[styles.container, isEssencial ? styles.essencial : styles.pro]}>
+    <View style={[styles.container, styles.essencial]}>
       <View style={styles.header}>
         <Text style={styles.planoNome}>{planoInfo?.nome}</Text>
         {planoInfo?.preco && (
@@ -46,17 +29,9 @@ export const PlanoInfoCard = memo<PlanoInfoCardProps>(({
       
       <Text style={styles.descricao}>{planoInfo?.descricao}</Text>
       
-      {isEssencial && showUpgradeButton && (
-        <TouchableOpacity style={styles.upgradeButton} onPress={handleUpgrade}>
-          <Text style={styles.upgradeButtonText}>Fazer Upgrade</Text>
-        </TouchableOpacity>
-      )}
-      
-      {!isEssencial && (
-        <View style={styles.proBadge}>
-          <Text style={styles.proBadgeText}>✓ Plano Ativo</Text>
-        </View>
-      )}
+      <View style={styles.essencialBadge}>
+        <Text style={styles.essencialBadgeText}>✓ Plano Ativo</Text>
+      </View>
     </View>
   );
 });
@@ -80,11 +55,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: wp('1%'), // ~4px em tela padrão
     borderLeftColor: '#1976d2',
   },
-  pro: {
-    backgroundColor: '#e8f5e8',
-    borderLeftWidth: wp('1%'), // ~4px em tela padrão
-    borderLeftColor: '#388e3c',
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -106,26 +76,14 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: hp('1.5%'), // ~12px em tela padrão
   },
-  upgradeButton: {
+  essencialBadge: {
     backgroundColor: '#1976d2',
-    paddingVertical: hp('1.25%'), // ~10px em tela padrão
-    paddingHorizontal: wp('5%'), // ~20px em tela padrão
-    borderRadius: wp('2%'), // ~8px em tela padrão
-    alignItems: 'center',
-  },
-  upgradeButtonText: {
-    color: '#fff',
-    fontSize: hp('1.75%'), // ~14px em tela padrão
-    fontWeight: 'bold',
-  },
-  proBadge: {
-    backgroundColor: '#388e3c',
     paddingVertical: hp('0.75%'), // ~6px em tela padrão
     paddingHorizontal: wp('3%'), // ~12px em tela padrão
     borderRadius: wp('4%'), // ~16px em tela padrão
     alignSelf: 'flex-start',
   },
-  proBadgeText: {
+  essencialBadgeText: {
     color: '#fff',
     fontSize: hp('1.5%'), // ~12px em tela padrão
     fontWeight: 'bold',

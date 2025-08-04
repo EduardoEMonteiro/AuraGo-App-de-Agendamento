@@ -15,9 +15,20 @@ interface Props {
   clients: Client[];
   services: Service[];
   selectedDate?: Date; // Data selecionada na agenda
+  onAddNewClient?: (newClient: any) => void; // Função para adicionar novo cliente
+  onAddNewService?: (newService: any) => void; // Função para adicionar novo serviço
 }
 
-export const NewAppointmentModal: React.FC<Props> = ({ isVisible, onClose, onSave, clients, services, selectedDate }) => {
+export const NewAppointmentModal: React.FC<Props> = ({ 
+  isVisible, 
+  onClose, 
+  onSave, 
+  clients, 
+  services, 
+  selectedDate,
+  onAddNewClient,
+  onAddNewService
+}) => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [date, setDate] = useState(selectedDate || new Date());
@@ -78,6 +89,18 @@ export const NewAppointmentModal: React.FC<Props> = ({ isVisible, onClose, onSav
       setDate(newDate);
     }
     setShowTimePicker(false);
+  };
+
+  const handleAddNewClient = (newClient: any) => {
+    onAddNewClient?.(newClient);
+    // Seleciona automaticamente o novo cliente
+    setSelectedClient(newClient);
+  };
+
+  const handleAddNewService = (newService: any) => {
+    onAddNewService?.(newService);
+    // Seleciona automaticamente o novo serviço
+    setSelectedService(newService);
   };
 
   return (
@@ -142,13 +165,15 @@ export const NewAppointmentModal: React.FC<Props> = ({ isVisible, onClose, onSav
           />
         </ScrollView>
 
-        {/* Modais de Seleção */}
+        {/* Modais de Seleção com funcionalidade de adicionar */}
         <SelectionModal
           isVisible={isClientModalVisible}
           onClose={() => setClientModalVisible(false)}
           onSelect={(item) => setSelectedClient(item as Client)}
           items={clients}
           title="Clientes"
+          onAddNew={handleAddNewClient}
+          type="cliente"
         />
         <SelectionModal
           isVisible={isServiceModalVisible}
@@ -156,6 +181,8 @@ export const NewAppointmentModal: React.FC<Props> = ({ isVisible, onClose, onSav
           onSelect={(item) => setSelectedService(item as Service)}
           items={services}
           title="Serviços"
+          onAddNew={handleAddNewService}
+          type="servico"
         />
       </SafeAreaView>
     </Modal>

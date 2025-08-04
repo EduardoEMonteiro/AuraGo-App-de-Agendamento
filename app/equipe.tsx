@@ -8,6 +8,7 @@ import * as Yup from 'yup';
 import { useAuthStore } from '../contexts/useAuthStore';
 import { useSalaoInfo } from '../hooks/useSalaoInfo';
 import { db } from '../services/firebase';
+import { CustomHeader } from '../components/CustomHeader';
 // Remover import do ModalPadrao
 // import { ModalPadrao } from '../src/components/ModalPadrao';
 import { Stack } from 'expo-router';
@@ -131,17 +132,16 @@ export default function EquipeScreen() {
       </View>
     );
   }
-  if (user.role !== 'gerente' || salaoInfo.plano !== 'pro') {
+  if (user.role !== 'gerente') {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
-        <Feather name="lock" size={48} color="#888" />
-        <Text style={{ fontSize: 18, marginVertical: 16, textAlign: 'center' }}>
-          Funcionalidade exclusiva para Gerentes no Plano Pro.
-        </Text>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
-          <Text style={{ color: '#1976d2', fontWeight: 'bold', fontSize: 16 }}>Voltar</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
+        <CustomHeader title="Equipe" showBackButton={false} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ fontSize: 18, textAlign: 'center', color: '#666' }}>
+            Funcionalidade exclusiva para Gerentes.
+          </Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
