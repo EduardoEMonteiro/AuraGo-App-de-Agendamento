@@ -5,18 +5,29 @@
     "slug": "aura",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/ic_logo_notification.png",
+    "icon": "./assets/images/icone.aura.png",
     "splash": {
       "image": "./assets/images/logo_aura.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "resizeMode": "cover",
+      "backgroundColor": "#efefef"
     },
-    "scheme": "meuapp",
+    "scheme": "aura",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
-      "googleServicesFile": "./firebase-config/GoogleService-Info.plist"
+      "googleServicesFile": "./firebase-config/GoogleService-Info.plist",
+      "bundleIdentifier": "com.bloom.aoo",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Este app precisa acessar a câmera para funcionalidades de foto.",
+        "NSLocationWhenInUseUsageDescription": "Este app precisa acessar sua localização para funcionalidades de mapa.",
+        "NSMicrophoneUsageDescription": "Este app precisa acessar o microfone para funcionalidades de áudio.",
+        "NSPhotoLibraryUsageDescription": "Este app precisa acessar sua galeria para selecionar fotos.",
+        "NSUserNotificationUsageDescription": "Este app usa notificações para alertas importantes.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -37,13 +48,50 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/logo_aura.png",
-          "resizeMode": "contain",
+          "resizeMode": "cover",
           "backgroundColor": "#efefef"
         }
-      ]
+      ],
+      "expo-notifications",
+      "expo-device",
+      "expo-constants"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "linking": {
+      "schemes": ["aura"],
+      "config": {
+        "screens": {
+          "index": "",
+          "(tabs)": "",
+          "login": "",
+          "email-verificacao": "",
+          "cadastro-salao": "",
+          "selecao-plano": "",
+          "(checkout)": "",
+          "aguardando-confirmacao": "",
+          "stripe-checkout": "",
+          "boas-vindas": "",
+          "trial-welcome": "",
+          "upgrade": "",
+          "salao": "",
+          "clientes": "",
+          "servicos": "",
+          "produtos": "",
+          "mensagens": "",
+          "equipe": "",
+          "equipe-editar": "",
+          "pagamentos": "",
+          "gerenciar-assinatura": "",
+          "historico-receitas": "",
+          "horariofuncionamento": "",
+          "ContaScreen": "",
+          "termos-uso": "",
+          "politica-privacidade": "",
+          "termos-privacidade": ""
+        }
+      }
     },
     "extra": {
       "router": {},

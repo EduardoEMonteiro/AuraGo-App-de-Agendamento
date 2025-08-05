@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
-import Icon from 'react-native-vector-icons/Feather';
+import { Feather } from '@expo/vector-icons';
 import { Colors, Icons } from '../constants/DesignSystem';
 
 interface ScheduleBlockCardProps {
@@ -20,7 +20,7 @@ export const ScheduleBlockCard = memo<ScheduleBlockCardProps>(({
       <View style={styles.hatchPattern} />
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Icon name="lock" size={Icons.size} color={Colors.textSecondary} />
+          <Feather name="lock" size={Icons.size} color={Colors.textSecondary} />
         </View>
         <View style={styles.textContainer}>
           <Text style={styles.reason}>{reason}</Text>

@@ -5,6 +5,7 @@
 // ===================================================================
 
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { Platform } from 'react-native';
 import { trackStripeCheckoutCompleted, trackStripeCheckoutFailed } from '../utils/trialAnalytics';
 
 const functions = getFunctions();
@@ -29,7 +30,8 @@ export async function initializeStripe() {
     const { initStripe } = require('@stripe/stripe-react-native');
     await initStripe({
       publishableKey: STRIPE_PUBLISHABLE_KEY,
-      merchantIdentifier: 'merchant.com.aura.app', // Opcional, para Apple Pay
+      merchantIdentifier: Platform.OS === 'ios' ? 'merchant.com.bloom.aoo' : undefined,
+      urlScheme: Platform.OS === 'ios' ? 'aura' : undefined,
     });
     console.log('Stripe inicializado com sucesso');
   } catch (error) {
@@ -63,8 +65,8 @@ export async function createRealCheckoutSession(plano: 'essencial', idSalao: str
     const functionUrl = 'https://us-central1-bloom-agendamento.cloudfunctions.net/createStripeCheckout';
     
     // URLs de retorno corretas para o app
-    const successUrl = 'meuapp://checkout/sucesso?session_id={CHECKOUT_SESSION_ID}';
-    const cancelUrl = 'meuapp://checkout/cancelado';
+    const successUrl = 'aura://checkout/sucesso?session_id={CHECKOUT_SESSION_ID}';
+    const cancelUrl = 'aura://checkout/cancelado';
 
     const requestBody = {
       priceId: priceId,

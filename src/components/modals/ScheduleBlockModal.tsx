@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
-import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Colors, Spacing, Typography } from '../../constants/DesignSystem';
 
 interface Props {
@@ -108,7 +108,7 @@ export const ScheduleBlockModal: React.FC<Props> = ({ isVisible, onClose, onSave
               testID="dateTimePicker"
               value={date}
               mode="date"
-              display="default"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={onDateChange}
             />
           )}
@@ -124,7 +124,7 @@ export const ScheduleBlockModal: React.FC<Props> = ({ isVisible, onClose, onSave
               value={startTime}
               mode="time"
               is24Hour={true}
-              display="default"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={onStartTimeChange}
             />
           )}
@@ -140,7 +140,7 @@ export const ScheduleBlockModal: React.FC<Props> = ({ isVisible, onClose, onSave
               value={endTime}
               mode="time"
               is24Hour={true}
-              display="default"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={onEndTimeChange}
             />
           )}

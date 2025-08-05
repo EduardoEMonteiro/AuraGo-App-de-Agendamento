@@ -1,7 +1,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import Icon from 'react-native-vector-icons/Feather';
+import { Feather } from '@expo/vector-icons';
 import { Colors, Icons, Spacing, Typography } from '../constants/DesignSystem';
 
 interface ScheduleBlockModalProps {
@@ -78,7 +78,7 @@ export const ScheduleBlockModal: React.FC<ScheduleBlockModalProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Icon name="x" size={24} color={Colors.textPrimary} />
+            <Feather name="x" size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Bloquear Horário</Text>
           <View style={styles.placeholder} />
@@ -106,12 +106,12 @@ export const ScheduleBlockModal: React.FC<ScheduleBlockModalProps> = ({
               style={styles.timeButton} 
               onPress={() => setShowStartPicker(true)}
             >
-              <Icon name="clock" size={Icons.size} color={Colors.primary} />
+              <Feather name="clock" size={Icons.size} color={Colors.primary} />
               <View style={styles.timeInfo}>
                 <Text style={styles.timeText}>{formatTime(startTime)}</Text>
                 <Text style={styles.dateText}>{formatDate(startTime)}</Text>
               </View>
-              <Icon name="chevron-right" size={Icons.size} color={Colors.textSecondary} />
+              <Feather name="chevron-right" size={Icons.size} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -122,19 +122,19 @@ export const ScheduleBlockModal: React.FC<ScheduleBlockModalProps> = ({
               style={styles.timeButton} 
               onPress={() => setShowEndPicker(true)}
             >
-              <Icon name="clock" size={Icons.size} color={Colors.primary} />
+              <Feather name="clock" size={Icons.size} color={Colors.primary} />
               <View style={styles.timeInfo}>
                 <Text style={styles.timeText}>{formatTime(endTime)}</Text>
                 <Text style={styles.dateText}>{formatDate(endTime)}</Text>
               </View>
-              <Icon name="chevron-right" size={Icons.size} color={Colors.textSecondary} />
+              <Feather name="chevron-right" size={Icons.size} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
           {/* Validação */}
           {!isFormValid && (
             <View style={styles.validationMessage}>
-              <Icon name="alert-circle" size={16} color={Colors.error} />
+              <Feather name="alert-circle" size={16} color={Colors.error} />
               <Text style={styles.validationText}>
                 O horário de fim deve ser posterior ao horário de início
               </Text>
@@ -149,7 +149,7 @@ export const ScheduleBlockModal: React.FC<ScheduleBlockModalProps> = ({
             onPress={handleSave}
             disabled={!isFormValid}
           >
-            <Icon name="save" size={Icons.size} color={Colors.background} />
+            <Feather name="save" size={Icons.size} color={Colors.background} />
             <Text style={styles.saveButtonText}>Salvar Bloqueio</Text>
           </TouchableOpacity>
         </View>

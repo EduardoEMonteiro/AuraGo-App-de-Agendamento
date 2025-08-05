@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 interface StripeCheckoutProps {
@@ -54,6 +54,11 @@ export function StripeCheckout({ checkoutUrl, onSuccess, onCancel, onError }: St
         javaScriptEnabled={true}
         domStorageEnabled={true}
         startInLoadingState={true}
+        {...(Platform.OS === 'ios' && {
+          allowsInlineMediaPlayback: true,
+          mediaPlaybackRequiresUserAction: false,
+          allowsBackForwardNavigationGestures: true,
+        })}
       />
     </View>
   );

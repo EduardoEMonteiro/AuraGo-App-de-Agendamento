@@ -2,11 +2,13 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Image, Text, View } from 'react-native';
+import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import EmailVerificationBanner from '../components/EmailVerificationBanner';
 import { useAuthListener, useAuthStore } from '../contexts/useAuthStore';
 import { useSalaoInfo } from '../hooks/useSalaoInfo';
+import { configureGoogleSignIn } from '../services/googleSignIn';
 import { isTrialExpired } from '../utils/trialUtils';
 // Adicione outros providers que você usa, como o de Notificações
 // import { NotificationsProvider, NotificationsRoot } from '../contexts/NotificationsContext';
@@ -377,7 +379,12 @@ function RootLayoutNav() {
 export default function RootLayout() {
   // Hooks que monitoram o estado devem ficar aqui fora
   useAuthListener();
-  
+
+  // Inicializar Google Sign-In
+  useEffect(() => {
+    configureGoogleSignIn();
+  }, []);
+
   return (
     <AppProviders>
       <RootLayoutNav />

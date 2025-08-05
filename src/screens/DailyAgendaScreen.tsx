@@ -3,7 +3,7 @@ import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet
 import { Picker } from '@react-native-picker/picker';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Linking, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Button, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -814,7 +814,7 @@ const DailyAgendaScreen: React.FC = () => {
                 setValorVenda(p ? String(p.precoVenda) : '');
               }}
               style={{ height: 48, fontSize: 13 }}
-              itemStyle={{ fontSize: 13 }}
+              itemStyle={Platform.OS === 'ios' ? { fontSize: 16, height: 200 } : { fontSize: 13 }}
             >
               <Picker.Item label="Selecione um produto..." value="" style={{ fontSize: 13 }} />
               {produtos.map(p => (
@@ -1076,7 +1076,7 @@ const DailyAgendaScreen: React.FC = () => {
                               { color: '#fff' },
                             ]}
                           >
-                            <Feather name="user" size={hp('1.5%')} color="#fff" />
+                            <Feather name="user" size={Platform.OS === 'ios' ? hp('1.8%') : hp('1.5%')} color="#fff" />
                             {' '}{appointment.clienteNome}
                           </Text>
                           <Text
@@ -1521,9 +1521,9 @@ const styles = StyleSheet.create({
     // Estilos para status de agendamento
     statusIcon: {
       position: 'absolute',
-      top: hp('0.75%'),
-      right: wp('1.5%'),
-      fontSize: hp('1.8%'),
+      top: Platform.OS === 'ios' ? hp('1%') : hp('0.75%'),
+      right: Platform.OS === 'ios' ? wp('2%') : wp('1.5%'),
+      fontSize: Platform.OS === 'ios' ? hp('2%') : hp('1.8%'),
       opacity: 0.8,
     },
     paidCard: {
@@ -1538,8 +1538,8 @@ const styles = StyleSheet.create({
       borderRadius: 8,
       overflow: 'hidden',
       borderLeftWidth: 5,
-      paddingLeft: wp('2%'),
-      paddingVertical: hp('0.5%'),
+      paddingLeft: Platform.OS === 'ios' ? wp('2.5%') : wp('2%'),
+      paddingVertical: Platform.OS === 'ios' ? hp('0.8%') : hp('0.5%'),
       justifyContent: 'center', // Centraliza o conteúdo verticalmente
       position: 'relative',
     },
@@ -1549,12 +1549,12 @@ const styles = StyleSheet.create({
     },
     cardText: {
       ...Typography.BodySemibold,
-      fontSize: hp('1.6%'),
-      lineHeight: hp('2.2%'),
+      fontSize: Platform.OS === 'ios' ? hp('1.8%') : hp('1.6%'),
+      lineHeight: Platform.OS === 'ios' ? hp('2.4%') : hp('2.2%'),
     },
     cardSubtext: {
       ...Typography.Caption,
-      fontSize: hp('1.5%'),
+      fontSize: Platform.OS === 'ios' ? hp('1.7%') : hp('1.5%'),
       opacity: 0.9,
     },
   });

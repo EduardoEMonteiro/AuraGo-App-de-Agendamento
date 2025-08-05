@@ -1,7 +1,7 @@
 // app/stripe-checkout.tsx
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 export default function StripeCheckoutScreen() {
@@ -72,6 +72,11 @@ export default function StripeCheckoutScreen() {
         startInLoadingState={true}
         onNavigationStateChange={handleNavigationStateChange}
         renderLoading={renderLoadingView}
+        {...(Platform.OS === 'ios' && {
+          allowsInlineMediaPlayback: true,
+          mediaPlaybackRequiresUserAction: false,
+          allowsBackForwardNavigationGestures: true,
+        })}
       />
     </View>
   );

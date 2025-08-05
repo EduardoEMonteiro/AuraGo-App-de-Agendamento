@@ -1,7 +1,7 @@
-import * as AuthSession from 'expo-auth-session';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useRouter } from 'expo-router';
 import type { Auth } from 'firebase/auth';
-import { createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, sendEmailVerification, sendPasswordResetEmail, signInWithCredential, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -13,14 +13,6 @@ import { registerForPushNotificationsAsync, savePushTokenToFirestore } from '../
 import { trackTrialStarted } from '../utils/trialAnalytics';
 import { scheduleAllTrialNotifications } from '../utils/trialNotifications';
 import { calculateTrialExpiration } from '../utils/trialUtils';
-
-const CLIENT_ID = '108734211856-97el2rk337iq6ii8bkrgmp7m9l0btm1o.apps.googleusercontent.com';
-
-const discovery = {
-  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-  tokenEndpoint: 'https://oauth2.googleapis.com/token',
-  revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
-};
 
 export default function LoginScreen() {
   const { setUser } = useAuthStore();
@@ -38,28 +30,6 @@ export default function LoginScreen() {
   // Debug Zustand
   // @ts-ignore
   console.log('user Zustand:', require('../contexts/useAuthStore').useAuthStore.getState().user);
-
-  const redirectUri = AuthSession.makeRedirectUri();
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: CLIENT_ID,
-      redirectUri,
-      scopes: ['profile', 'email'],
-      responseType: 'token',
-      usePKCE: false, // Força implicit flow, sem PKCE
-    },
-    discovery
-  );
-
-  // TESTE: Botão de clique
-  // return (
-  //   <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-  //     <Button title="Teste clique" onPress={() => { console.log('Botão de teste clicado'); alert('Funcionou!'); }} />
-  //   </View>
-  // );
-
-  // TESTE: Renderização simples
-  // return <Text>TESTE DE RENDERIZAÇÃO DIRETA</Text>;
 
   // O return deve ser a última linha do componente, após todos os hooks e variáveis
   console.log('LoginScreen renderizou, mode:', mode, 'email:', email, 'user:', typeof setUser);
@@ -218,7 +188,7 @@ export default function LoginScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={() => promptAsync()}
+                  onPress={handleGoogleSignIn}
                   disabled={loading}
                   style={{
                     backgroundColor: '#fff',
@@ -516,6 +486,114 @@ export default function LoginScreen() {
     } catch (e: any) {
       console.error('Erro no reset:', e);
       Alert.alert('Erro', e.message || JSON.stringify(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    console.log('handleGoogleSignIn chamado');
+    setLoading(true);
+    
+    try {
+      // Verificar se os serviços do Google Play estão disponíveis (Android)
+      if (Platform.OS === 'android') {
+        const hasPlayServices = await GoogleSignin.hasPlayServices();
+        if (!hasPlayServices) {
+          Alert.alert('Erro', 'Serviços do Google Play não estão disponíveis.');
+          return;
+        }
+      }
+
+      // Iniciar o processo de login com Google
+      const userInfo = await GoogleSignin.signIn();
+      console.log('Google Sign-In bem-sucedido:', userInfo.user?.email);
+
+      // Obter o ID token do Google
+      const idToken = await GoogleSignin.getTokens();
+      console.log('ID Token obtido do Google');
+
+      // Criar credencial do Firebase
+      const googleCredential = GoogleAuthProvider.credential(idToken.accessToken);
+      console.log('Credencial do Firebase criada');
+
+      // Fazer login no Firebase
+      const userCredential = await signInWithCredential(auth as Auth, googleCredential);
+      console.log('Login no Firebase bem-sucedido:', userCredential.user.uid);
+
+      // Verificar se o usuário já existe no Firestore
+      const userDoc = await getDoc(doc(db, 'usuarios', userCredential.user.uid));
+      
+      if (!userDoc.exists()) {
+        // Usuário novo - criar documento no Firestore
+        const trialStartDate = new Date();
+        const trialExpirationDate = calculateTrialExpiration();
+        
+        const userData = {
+          id: userCredential.user.uid,
+          email: userCredential.user.email,
+          nome: userInfo.user?.givenName || '',
+          sobrenome: userInfo.user?.familyName || '',
+          role: 'gerente',
+          idSalao: null,
+          emailVerificado: true, // Google já verifica o email
+          freeTrialStartAt: trialStartDate,
+          freeTrialExpiresAt: trialExpirationDate,
+          plano: 'trial',
+          statusAssinatura: 'trial',
+          aceitouTermos: true,
+          dataAceiteTermos: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        await setDoc(doc(db, 'usuarios', userCredential.user.uid), userData);
+        console.log('Novo usuário criado no Firestore');
+
+        // Salvar consentimento dos termos
+        await salvarConsentimento(userCredential.user.uid, 'termos_uso', true, '1.0');
+        await salvarConsentimento(userCredential.user.uid, 'politica_privacidade', true, '1.0');
+
+        // Registrar analytics do trial (não crítico)
+        try {
+          await trackTrialStarted(userCredential.user.uid, trialStartDate);
+        } catch (analyticsError) {
+          console.log('Analytics não registrado (não crítico):', analyticsError);
+        }
+
+        // Agendar notificações do trial (se tiver push token) - não crítico
+        try {
+          const pushToken = await registerForPushNotificationsAsync();
+          if (pushToken) {
+            await savePushTokenToFirestore(userCredential.user.uid, pushToken);
+            await scheduleAllTrialNotifications(userCredential.user.uid, pushToken, trialStartDate);
+            console.log('Notificações do trial agendadas');
+          }
+        } catch (notificationError) {
+          console.log('Notificações não agendadas (não crítico):', notificationError);
+        }
+      } else {
+        // Usuário existente - apenas atualizar dados se necessário
+        console.log('Usuário existente encontrado no Firestore');
+      }
+
+      // O onAuthStateChanged no useAuthStore irá lidar com o redirecionamento automaticamente
+      console.log('Login com Google concluído com sucesso');
+
+    } catch (error: any) {
+      console.error('Erro no login com Google:', error);
+      
+      let errorMessage = 'Não foi possível fazer login com o Google.';
+      
+      if (error.code === 'SIGN_IN_CANCELLED') {
+        errorMessage = 'Login cancelado pelo usuário.';
+      } else if (error.code === 'IN_PROGRESS') {
+        errorMessage = 'Login já está em andamento.';
+      } else if (error.code === 'PLAY_SERVICES_NOT_AVAILABLE') {
+        errorMessage = 'Serviços do Google Play não estão disponíveis.';
+      }
+      
+      Alert.alert('Erro', errorMessage);
     } finally {
       setLoading(false);
     }
