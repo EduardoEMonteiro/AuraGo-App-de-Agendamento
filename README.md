@@ -6,13 +6,6 @@
 
 Sistema profissional de gestão para salões de beleza, incluindo agendamentos, clientes, pagamentos e analytics em tempo real.
 
-⚡ Badges de Status
-
-https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
-https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white
-https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black
-https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
-https://img.shields.io/badge/Stripe-008CDD?style=for-the-badge&logo=stripe&logoColor=white
 
 🎯 Visão Geral
 
