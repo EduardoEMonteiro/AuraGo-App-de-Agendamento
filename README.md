@@ -1,107 +1,192 @@
-# Welcome to your Expo app 👋
+📱 AuraGo App - Sistema Completo de Gestão para Salões
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+🚀 Status: Em desenvolvimento • React Native • Firebase • Stripe
+📱 Plataformas: Android & iOS (Cross-platform)
+🏗️ Arquitetura: Full-Stack com Expo + Firebase + Cloud Functions
 
-## Get started
+Sistema profissional de gestão para salões de beleza, incluindo agendamentos, clientes, pagamentos e analytics em tempo real.
 
-1. Install dependencies
+⚡ Badges de Status
 
-   ```bash
-   npm install
-   ```
+https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
+https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white
+https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black
+https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
+https://img.shields.io/badge/Stripe-008CDD?style=for-the-badge&logo=stripe&logoColor=white
 
-2. Start the app
+🎯 Visão Geral
 
-   ```bash
-   npx expo start
-   ```
+O AuraGo App é uma solução completa de gestão para salões de beleza e barbearias, desenvolvida com tecnologias modernas para oferecer uma experiência premium tanto para donos de estabelecimentos quanto para seus clientes.
 
-In the output, you'll find options to open the app in a
+Problema Resolvido
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+· Gestão manual e desorganizada de agendamentos
+· Falta de sistema integrado cliente-serviço
+· Dificuldade em analisar métricas de negócio
+· Processo de pagamento fragmentado
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Nossa Solução
 
-## Get a fresh project
+· ✅ Sistema unificado de agendamentos
+· ✅ Gestão completa de clientes e serviços
+· ✅ Pagamentos integrados com Stripe
+· ✅ Analytics em tempo real
+· ✅ Experiência mobile-first
 
-When you're ready, run:
+🏗️ Arquitetura Técnica
 
-```bash
-npm run reset-project
+```
+📱 FRONTEND (Mobile)
+├── Framework: React Native (Expo)
+├── Linguagem: TypeScript
+├── UI: NativeWind (Tailwind para React Native)
+├── Navegação: React Navigation
+├── Estado: Zustand + Jotai
+└── Formulários: Formik + Yup
+
+🔥 BACKEND & INFRA
+├── Banco de Dados: Firebase Firestore (NoSQL)
+├── Autenticação: Firebase Auth + Google Sign-In
+├── Storage: Firebase Storage (imagens)
+├── Pagamentos: Stripe API + Cloud Functions
+├── Hosting: Firebase Hosting (web admin)
+└── Analytics: Firebase Analytics + Crashlytics
+
+☁️ SERVERLESS
+├── Cloud Functions: Webhooks Stripe, notificações
+├── Triggers: Firestore triggers para automatização
+└── Schedule: Tarefas agendadas (backups, relatórios)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+🎨 Funcionalidades Principais
 
-## Learn more
+1. 📅 Sistema de Agendamentos Inteligente
 
-To learn more about developing your project with Expo, look at the following resources:
+· Cliente:
+  · Busca por salões próximos
+  · Agendamento em 3 cliques (serviço, profissional, horário)
+  · Lembretes automáticos (push/email/SMS)
+  · Histórico completo
+· Salão:
+  · Agenda visual intuitiva (calendário/semana/dia)
+  · Bloqueio de horários
+  · Gestão de múltiplos profissionais
+  · Overbooking prevention
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+2. 👥 CRM Integrado
 
-## Join the community
+· Ficha completa do cliente:
+  · Histórico de serviços
+  · Preferências (profissional, horário)
+  · Anotações pessoais
+  · Fotos "antes/depois"
+· Segmentação:
+  · Tags personalizadas
+  · Clientes recorrentes vs. novos
+  · Aniversariantes do mês
 
-Join our community of developers creating universal apps.
+3. 💰 Sistema de Pagamentos com Stripe
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```typescript
+// Fluxo completo de pagamento
+1. Seleção de plano → 2. Checkout Stripe → 3. Webhook → 4. Ativação
+```
 
-## Estrutura Inicial do Projeto
+Planos disponíveis:
 
-- `screens/`: Telas principais da aplicação
-- `components/`: Componentes reutilizáveis
-- `contexts/`: Estado global (Zustand/Jotai)
-- `services/`: Serviços externos (Firebase, Google Sign-In)
+· Básico: Gestão de agenda + clientes (R$ 49/mês)
+· Pro: Básico + pagamentos integrados (R$ 99/mês)
+· Premium: Pro + analytics avançado (R$ 199/mês)
 
-## Configuração Firebase
-Edite `services/firebase.ts` e adicione suas credenciais do Firebase.
+4. 📊 Dashboard de Analytics
 
-## Google Sign-In
-Edite `services/googleSignIn.ts` e adicione seu `webClientId` do Firebase.
+· Métricas em tempo real:
+  · Taxa de ocupação
+  · Ticket médio
+  · Clientes recorrentes
+  · Horários mais populares
+· Relatórios:
+  · Faturamento diário/semanal/mensal
+  · Performance por profissional
+  · Comparativo período vs período
 
-## Tailwind/NativeWind
-- O Tailwind já está configurado em `tailwind.config.js` e `postcss.config.js`.
-- Use classes utilitárias direto no `className` dos componentes.
+5. 🔔 Sistema de Notificações
 
-## Estado Global
-- Exemplo com Zustand: `contexts/useAuthStore.ts`
-- Exemplo com Jotai: `contexts/useJotaiAuth.ts`
+· Tipos:
+  · Confirmação de agendamento
+  · Lembrete 24h antes
+  · Promoções personalizadas
+  · Aniversário do cliente
+· Canais: Push, SMS, WhatsApp, Email
 
-## Formulários
-- Exemplo de Formik + Yup + máscara: `screens/FormExampleScreen.tsx`
+6. 🛠️ Gestão do Salão
 
-## Navegação
-- Instale as dependências do React Navigation e configure as rotas em `app/`.
+· Catálogo de serviços: Preços, duração, profissionais
+· Equipe: Horários, comissões, especialidades
+· Estoque: Produtos utilizados nos serviços
+· Financeiro: Contas a pagar/receber, comissões
 
-## Máscara de Telefone
-- Exemplo de uso em `screens/FormExampleScreen.tsx` com `react-native-masked-text`.
+⚙️ Configuração e Execução
 
-# Aura - App de Gestão para Salões
+Pré-requisitos
 
-## Fluxo de Pagamento com Stripe
+```bash
+# Node.js 18+
+node --version
 
-### Fluxo Atual (Simulação)
-1. Usuário seleciona plano
-2. Mock do Stripe cria sessão
-3. Tela de checkout simula pagamento
-4. Frontend atualiza plano no Firebase (APENAS PARA TESTE)
-5. App permite acesso
+# Expo CLI
+npm install -g expo-cli
 
-### Fluxo Real em Produção
-1. Usuário seleciona plano
-2. Cloud Function cria sessão real do Stripe
-3. Usuário completa pagamento no Stripe
-4. Stripe envia webhook para nosso servidor
-5. Servidor verifica assinatura do webhook
-6. Servidor atualiza plano no Firebase
-7. App detecta mudança e permite acesso
+# Firebase CLI (opcional)
+npm install -g firebase-tools
 
-### Implementação do Webhook (Futuro)
+# EAS CLI (para builds)
+npm install -g eas-cli
+```
+
+Passo a Passo para Desenvolvimento
+
+```bash
+# 1. Clone o repositório
+git clone https://github.com/EduardoEMonteiro/AuraGo-App-de-Agendamento.git
+cd AuraGo-App-de-Agendamento
+
+# 2. Instale dependências
+npm install
+
+# 3. Configure variáveis de ambiente
+cp .env.example .env
+# Edite .env com suas chaves:
+# - Firebase config
+# - Stripe keys
+# - Google Sign-In
+
+# 4. Inicie o projeto
+npx expo start
+
+# 5. Escolha como executar:
+# - Expo Go (QR code)
+# - Android Emulator
+# - iOS Simulator
+# - Dispositivo físico
+```
+
+Configuração do Firebase
+
+1. Crie projeto em console.firebase.google.com
+2. Adicione app Android/iOS
+3. Baixe google-services.json (Android) e GoogleService-Info.plist (iOS)
+4. Coloque na raiz do projeto
+5. Ative os serviços:
+   · Authentication (Email/Google)
+   · Firestore Database
+   · Storage
+   · Cloud Functions
+
+Configuração do Stripe (Produção)
+
 ```javascript
-// Cloud Function para webhook do Stripe
+// Cloud Functions para webhook
 exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = 'whsec_...'; // Secret do webhook
@@ -109,28 +194,329 @@ exports.stripeWebhook = functions.https.onRequest(async (req, res) => {
   try {
     const event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
     
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      
-      // Atualizar plano no Firebase
-      const salaoRef = doc(db, 'saloes', session.metadata.salaoId);
-      await updateDoc(salaoRef, {
-        plano: session.metadata.plano,
-        dataAtivacao: new Date(),
-        status: 'ativo',
-        sessionId: session.id
-      });
+    switch (event.type) {
+      case 'checkout.session.completed':
+        await handleSuccessfulPayment(event);
+        break;
+      case 'customer.subscription.updated':
+        await handleSubscriptionUpdate(event);
+        break;
+      // ... outros eventos
     }
     
     res.json({received: true});
   } catch (err) {
+    console.error('Webhook error:', err);
     res.status(400).send(`Webhook Error: ${err.message}`);
   }
 });
 ```
 
-### Segurança
-- ✅ Webhook verifica assinatura do Stripe
-- ✅ Apenas servidor atualiza plano
-- ✅ Frontend não pode manipular pagamentos
-- ✅ Logs de auditoria completos
+📁 Estrutura do Projeto
+
+```
+AuraGo-App-de-Agendamento/
+├── app/                          # Rotas e navegação (Expo Router)
+│   ├── (auth)/                   # Rotas de autenticação
+│   ├── (app)/                    # Rotas principais do app
+│   └── _layout.tsx               # Layout raiz
+│
+├── screens/                      # Telas principais
+│   ├── Auth/
+│   │   ├── LoginScreen.tsx
+│   │   ├── RegisterScreen.tsx
+│   │   └── ForgotPasswordScreen.tsx
+│   ├── Main/
+│   │   ├── DashboardScreen.tsx
+│   │   ├── ScheduleScreen.tsx
+│   │   ├── ClientsScreen.tsx
+│   │   └── PaymentsScreen.tsx
+│   └── Settings/
+│
+├── components/                   # Componentes reutilizáveis
+│   ├── common/
+│   │   ├── Button.tsx
+│   │   ├── Input.tsx
+│   │   └── Modal.tsx
+│   ├── schedule/
+│   │   ├── CalendarView.tsx
+│   │   └── TimeSlotPicker.tsx
+│   └── payments/
+│       └── PlanCard.tsx
+│
+├── contexts/                     # Estado global
+│   ├── AuthContext.tsx
+│   ├── ScheduleContext.tsx
+│   └── PaymentContext.tsx
+│
+├── services/                     # Integrações externas
+│   ├── firebase/
+│   │   ├── firestore.ts
+│   │   ├── auth.ts
+│   │   └── storage.ts
+│   ├── stripe/
+│   │   ├── payment.ts
+│   │   └── subscriptions.ts
+│   └── notifications/
+│       ├── push.ts
+│       └── email.ts
+│
+├── utils/                        # Utilitários
+│   ├── validators.ts
+│   ├── formatters.ts
+│   └── constants.ts
+│
+├── types/                        # Tipos TypeScript
+│   ├── user.ts
+│   ├── schedule.ts
+│   └── payment.ts
+│
+├── assets/                       # Recursos estáticos
+│   ├── images/
+│   ├── icons/
+│   └── fonts/
+│
+└── config/                       # Configurações
+    ├── firebaseConfig.ts
+    ├── stripeConfig.ts
+    └── appConfig.ts
+```
+
+💳 Sistema de Pagamentos - Implementação Completa
+
+Arquitetura de Pagamentos
+
+```
+FRONTEND (React Native)
+    ↓
+STRIPE CHECKOUT / ELEMENTS
+    ↓
+STRIPE API (createPaymentIntent)
+    ↓
+WEBHOOK → CLOUD FUNCTIONS
+    ↓
+FIREBASE FIRESTORE (update status)
+    ↓
+FRONTEND (update UI)
+```
+
+Código do Webhook (Produção)
+
+```typescript
+// functions/src/stripe-webhook.ts
+import * as functions from 'firebase-functions';
+import * as admin from 'firebase-admin';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(functions.config().stripe.secret_key, {
+  apiVersion: '2023-10-16',
+});
+
+export const stripeWebhook = functions.https.onRequest(async (req, res) => {
+  const sig = req.headers['stripe-signature'] as string;
+  
+  try {
+    const event = stripe.webhooks.constructEvent(
+      req.rawBody,
+      sig,
+      functions.config().stripe.webhook_secret
+    );
+
+    const data = event.data.object;
+    const eventType = event.type;
+
+    switch (eventType) {
+      case 'checkout.session.completed':
+        await handleCheckoutSessionCompleted(data);
+        break;
+        
+      case 'customer.subscription.created':
+        await handleSubscriptionCreated(data);
+        break;
+        
+      case 'invoice.payment_succeeded':
+        await handleInvoicePaymentSucceeded(data);
+        break;
+        
+      case 'customer.subscription.deleted':
+        await handleSubscriptionDeleted(data);
+        break;
+    }
+
+    res.json({ received: true });
+  } catch (err: any) {
+    functions.logger.error('Webhook error:', err);
+    res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+});
+
+async function handleCheckoutSessionCompleted(session: any) {
+  const salaoId = session.metadata.salaoId;
+  const userId = session.metadata.userId;
+  const plano = session.metadata.plano;
+  
+  const db = admin.firestore();
+  
+  // Atualizar status do salão
+  await db.collection('saloes').doc(salaoId).update({
+    plano,
+    planoStatus: 'ativo',
+    dataAtivacao: admin.firestore.FieldValue.serverTimestamp(),
+    stripeCustomerId: session.customer,
+    stripeSubscriptionId: session.subscription,
+  });
+  
+  // Registrar transação
+  await db.collection('transactions').add({
+    salaoId,
+    userId,
+    amount: session.amount_total / 100,
+    currency: session.currency,
+    status: 'completed',
+    stripeSessionId: session.id,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  
+  // Enviar notificação
+  await sendNotification(userId, 'Pagamento confirmado! Seu plano foi ativado.');
+}
+```
+
+Fluxo Seguro de Pagamentos
+
+```typescript
+// Frontend - Criando sessão de checkout
+const createCheckoutSession = async (planId: string) => {
+  try {
+    // 1. Criar sessão no backend (Cloud Function)
+    const response = await fetch('https://create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        planId,
+        salaoId: currentSalao.id,
+        userId: currentUser.uid,
+        successUrl: `${WEB_URL}/success`,
+        cancelUrl: `${WEB_URL}/cancel`,
+      }),
+    });
+    
+    const { sessionId } = await response.json();
+    
+    // 2. Redirecionar para Stripe Checkout
+    const { error } = await stripe.redirectToCheckout({ sessionId });
+    
+    if (error) {
+      throw new Error(error.message);
+    }
+  } catch (error) {
+    console.error('Checkout error:', error);
+  }
+};
+```
+
+🔐 Segurança Implementada
+
+Camadas de Segurança
+
+1. Firebase Security Rules:
+
+```json
+{
+  "rules": {
+    "saloes": {
+      "$salaoId": {
+        ".read": "auth != null && resource.data.ownerId == auth.uid",
+        ".write": "auth != null && resource.data.ownerId == auth.uid"
+      }
+    },
+    "payments": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
+```
+
+1. Validção de Webhook Stripe:
+   · Assinatura HMAC SHA256
+   · Timestamp prevention replay attacks
+   · Event type validation
+2. Proteção de Dados:
+   · Dados sensíveis no SecureStore
+   · Chaves API em variáveis de ambiente
+   · CORS configurado no Firebase
+
+📈 Roadmap de Desenvolvimento
+
+Versão 1.0 (Atual)
+
+· Sistema básico de agendamentos
+· Autenticação com Firebase
+· Perfis de usuário (cliente/profissional/dono)
+· Interface com NativeWind
+
+Versão 1.5 (Em desenvolvimento)
+
+· Integração completa com Stripe
+· Cloud Functions para webhooks
+· Dashboard de analytics
+· Notificações push
+
+Versão 2.0 (Planejado)
+
+· Sistema de comissões para profissionais
+· Integração com WhatsApp Business API
+· Relatórios PDF automáticos
+· API pública para integrações
+
+🐛 Solução de Problemas Comuns
+
+Problema: Firebase não inicializa
+
+```typescript
+// Solução: Verificar configuração
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+
+const firebaseConfig = {
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  // ... outros campos
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+```
+
+Problema: Stripe Webhook não chega
+
+```bash
+# Testar webhook localmente
+stripe listen --forward-to localhost:5001/aurago-app/us-central1/stripeWebhook
+stripe trigger checkout.session.completed
+```
+
+Problema: Build do Expo falha
+
+```bash
+# Limpar cache
+expo start -c
+
+# Verificar dependências
+expo doctor
+
+# Build específico
+eas build --platform android --profile preview
+```
+
+👨💻 Desenvolvedor
+
+Eduardo Monteiro
+
+---
+
+⭐ Se este projeto te inspirar, considere dar uma estrela no repositório! ⭐
+
+---
+
+Dúvidas? Abra uma issue no GitHub ou entre em contato! 🚀
